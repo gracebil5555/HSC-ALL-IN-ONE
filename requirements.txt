@@ -1,0 +1,29 @@
+# Django & Core Framework
+Django>=5.0,<5.2
+djangorestframework>=3.15.0
+djangorestframework-simplejwt>=5.3.1
+django-cors-headers>=4.3.1
+django-filter>=24.2
+
+# Database & Environment
+psycopg2-binary>=2.9.9
+dj-database-url>=2.1.0
+python-dotenv>=1.0.1
+
+# API Documentation (OpenAPI 3 / Swagger)
+drf-spectacular>=0.27.2
+drf-spectacular-sidecar>=2024.5.1
+
+# Asynchronous Tasks & Background Jobs
+celery>=5.4.0
+redis>=5.0.4
+
+# Storage, Media & File Handling
+Pillow>=10.3.0
+whitenoise>=6.6.0
+
+# HTTP & AI Integration Support
+requests>=2.31.0
+
+# Production Server
+gunicorn>=22.0.0
