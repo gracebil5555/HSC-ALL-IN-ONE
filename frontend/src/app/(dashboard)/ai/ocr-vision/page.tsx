@@ -74,7 +74,7 @@ export default function OcrVisionPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <Button variant="primary" size="md" onClick={handleSimulateScan}>
+            <Button variant="default" size="default" onClick={handleSimulateScan}>
               <UploadCloud className="w-4 h-4 mr-2" />
               Simuler l'Envoi d'une Fiche Papier
             </Button>
@@ -179,7 +179,7 @@ export default function OcrVisionPage() {
                 <span>Émargement enregistré avec succès en base !</span>
               </div>
             ) : (
-              <Button variant="primary" size="md" onClick={handleConfirmSync}>
+              <Button variant="default" size="default" onClick={handleConfirmSync}>
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Valider en 1 Clic
               </Button>

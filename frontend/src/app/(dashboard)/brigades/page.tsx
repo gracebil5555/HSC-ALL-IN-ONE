@@ -36,7 +36,7 @@ export default function BrigadesPage() {
         description="Cellules de proximité, encadrement des fidèles, réunions hebdomadaires et pointage des présences"
         breadcrumbs={[{ label: "Brigades" }]}
         action={
-          <Button variant="primary" size="md">
+          <Button variant="default" size="default">
             <PlusCircle className="w-4 h-4 mr-2" />
             Créer une Brigade
           </Button>
@@ -147,7 +147,7 @@ export default function BrigadesPage() {
                 </Button>
               </Link>
               <Link href="/ai/voice-to-action" className="w-full">
-                <Button variant="primary" size="sm" className="w-full">
+                <Button variant="default" size="sm" className="w-full">
                   Pointage Express
                 </Button>
               </Link>

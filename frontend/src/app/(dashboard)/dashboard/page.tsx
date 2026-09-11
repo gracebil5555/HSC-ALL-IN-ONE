@@ -1,7 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { membersService } from "@/services/members.service";
+import { financesService } from "@/services/finances.service";
+import { Member } from "@/types/member.types";
+import { CashVoucher } from "@/types/finance.types";
 import { useTenant } from "@/context/TenantContext";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
@@ -27,7 +31,30 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { currentCampus, isGlobalScope, campuses, currentUser } = useTenant();
+  const { currentCampus, isGlobalScope, campuses, currentUser, currentCampusId } = useTenant();
+
+  const [members, setMembers] = useState<Member[]>([]);
+  const [vouchers, setVouchers] = useState<CashVoucher[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadDashboardData() {
+      setIsLoading(true);
+      try {
+        const [membersData, vouchersData] = await Promise.all([
+          membersService.getMembers(currentCampusId),
+          financesService.getVouchers(currentCampusId)
+        ]);
+        setMembers(membersData);
+        setVouchers(vouchersData);
+      } catch (error) {
+        console.error("Failed to load dashboard data", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadDashboardData();
+  }, [currentCampusId]);
 
   return (
     <div className="space-y-6">
@@ -75,7 +102,7 @@ export default function DashboardPage() {
               </Button>
             </Link>
             <Link href="/ai/voice-to-action">
-              <Button variant="primary" size="sm" className="bg-white text-brand-900 hover:bg-brand-50 shadow-none font-semibold">
+              <Button variant="default" size="sm" className="bg-white text-brand-900 hover:bg-brand-50 shadow-none font-semibold">
                 <Mic className="w-4 h-4 mr-1.5 text-brand-600" />
                 Note Vocale IA
               </Button>
@@ -91,7 +118,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 md:gap-6">
         <StatCard
           title={isGlobalScope ? "Membres Totaux Réseau" : "Membres du Campus"}
-          value={isGlobalScope ? "2 515" : currentCampus?.member_count || "1 420"}
+          value={isLoading ? "..." : members.length.toString()}
           change="+8.4%"
           trend="up"
           subtitle="Enregistrés et suivis"
@@ -100,31 +127,31 @@ export default function DashboardPage() {
         />
 
         <StatCard
-          title="Présence Dernier Culte"
-          value={isGlobalScope ? "1 980" : "1 150"}
-          change="+5.2%"
+          title="Nouveaux Venus"
+          value={isLoading ? "..." : members.filter(m => m.status === 'NOUVEAU').length.toString()}
+          change="Personnes à intégrer"
           trend="up"
-          subtitle="Taux d'émargement : 81%"
+          subtitle="Module d'accueil en cours"
           icon={<Church className="w-6 h-6 text-blue-light-500" />}
           iconBgColor="bg-blue-light-50 dark:bg-blue-light-500/15"
         />
 
         <StatCard
-          title={isGlobalScope ? "Collectes Mensuelles" : "Solde de Caisse Actuel"}
-          value={isGlobalScope ? "24 580 000 F" : "4 250 000 F"}
-          change="+12.1%"
+          title="Total Dépenses (Clôturées)"
+          value={isLoading ? "..." : vouchers.filter(v => v.status === "DISBURSED").reduce((acc, v) => acc + v.amount, 0).toLocaleString('fr-FR') + " F"}
+          change="Décaissements justifiés"
           trend="up"
-          subtitle="Dîmes, offrandes & Mobile Money"
+          subtitle="Pièces de caisse clôturées"
           icon={<Wallet className="w-6 h-6 text-success-500" />}
           iconBgColor="bg-success-50 dark:bg-success-500/15"
         />
 
         <StatCard
           title="Alertes Pastorales"
-          value="4"
-          change="1 critique"
+          value="0"
+          change="0 critique"
           trend="down"
-          subtitle="Santé, deuil, décrochage"
+          subtitle="Aucune alerte active"
           icon={<ShieldAlert className="w-6 h-6 text-error-500" />}
           iconBgColor="bg-error-50 dark:bg-error-500/15"
         />
@@ -185,7 +212,7 @@ export default function DashboardPage() {
                       </TableCell>
                       <TableCell>
                         <span className="text-xs font-bold text-gray-900 dark:text-white">
-                          {c.member_count}
+                          -
                         </span>
                       </TableCell>
                       <TableCell>
@@ -216,23 +243,23 @@ export default function DashboardPage() {
               <div className="mt-4 space-y-3.5 text-xs">
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50">
                   <span className="text-gray-600 dark:text-gray-400 font-medium">1. Accueil (1ères visites)</span>
-                  <span className="font-bold text-gray-900 dark:text-white">64</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{members.filter(m => m.assimilation_stage === 'ACCUEIL').length}</span>
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50">
                   <span className="text-gray-600 dark:text-gray-400 font-medium">2. Module 1 (Affermissement)</span>
-                  <span className="font-bold text-gray-900 dark:text-white">42</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{members.filter(m => m.assimilation_stage === 'MODULE_1').length}</span>
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50">
                   <span className="text-gray-600 dark:text-gray-400 font-medium">3. Module 2 (Doctrine)</span>
-                  <span className="font-bold text-gray-900 dark:text-white">29</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{members.filter(m => m.assimilation_stage === 'MODULE_2').length}</span>
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-blue-light-50 dark:bg-blue-light-500/10 text-blue-light-700 dark:text-blue-light-400 font-semibold">
                   <span>4. Candidats au Baptême</span>
-                  <span>18 prêts</span>
+                  <span>{members.filter(m => m.assimilation_stage === 'BAPTEME').length} prêts</span>
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-success-50 dark:bg-success-500/10 text-success-700 dark:text-success-400 font-semibold">
                   <span>5. Intégration Départements</span>
-                  <span>14 affectés</span>
+                  <span>{members.filter(m => m.assimilation_stage === 'INTEGRE').length} affectés</span>
                 </div>
               </div>
             </Card>
@@ -291,66 +318,48 @@ export default function DashboardPage() {
                   <TableHeaderCell>Date</TableHeaderCell>
                 </TableHead>
                 <TableBody>
-                  <TableRow>
-                    <TableCell>
-                      <span className="font-mono text-xs font-bold text-gray-800 dark:text-white">PC-2026-089</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs font-semibold block text-gray-900 dark:text-white">Chantres (Sonorisation)</span>
-                      <span className="text-[11px] text-gray-400">Piles micros sans fil répétition</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs font-bold text-gray-900 dark:text-white">25 000 FCFA</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="light" color="warning" size="sm">
-                        En Attente
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-gray-500">Aujourd'hui</span>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>
-                      <span className="font-mono text-xs font-bold text-gray-800 dark:text-white">PC-2026-088</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs font-semibold block text-gray-900 dark:text-white">Logistique & Groupe</span>
-                      <span className="text-[11px] text-gray-400">Carburant groupe 100 kVA (culte)</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs font-bold text-gray-900 dark:text-white">85 000 FCFA</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="light" color="info" size="sm">
-                        Validé Pasteur
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-gray-500">Hier</span>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>
-                      <span className="font-mono text-xs font-bold text-gray-800 dark:text-white">PC-2026-087</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs font-semibold block text-gray-900 dark:text-white">Département Accueil</span>
-                      <span className="text-[11px] text-gray-400">Rafraîchissements nouveaux venus</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs font-bold text-gray-900 dark:text-white">40 000 FCFA</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="light" color="success" size="sm">
-                        Décaissé / Clôturé
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-gray-500">28 Août</span>
-                    </TableCell>
-                  </TableRow>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4 text-gray-500">
+                        Chargement des pièces...
+                      </TableCell>
+                    </TableRow>
+                  ) : vouchers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4 text-gray-500">
+                        Aucune pièce de caisse récente
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    vouchers.slice(0, 3).map((vch) => (
+                      <TableRow key={vch.id}>
+                        <TableCell>
+                          <span className="font-mono text-xs font-bold text-gray-800 dark:text-white">{vch.voucher_number}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-semibold block text-gray-900 dark:text-white">{vch.beneficiary}</span>
+                          <span className="text-[11px] text-gray-400">{vch.purpose}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-bold text-gray-900 dark:text-white">
+                            {Number(vch.amount).toLocaleString('fr-FR')} FCFA
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="light" 
+                            color={vch.status === "APPROVED" ? "success" : vch.status === "DISBURSED" ? "success" : "warning"} 
+                            size="sm"
+                          >
+                            {vch.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs text-gray-500">{new Date(vch.created_at).toLocaleDateString('fr-FR')}</span>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </TableContainer>
             </ComponentCard>

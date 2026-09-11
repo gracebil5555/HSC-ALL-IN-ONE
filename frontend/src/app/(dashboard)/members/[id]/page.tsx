@@ -144,7 +144,7 @@ export default function MemberDetailPage() {
               target="_blank"
               rel="noreferrer"
             >
-              <Button variant="success" size="sm">
+              <Button variant="default" className="bg-green-600 hover:bg-green-700 text-white" size="sm">
                 <MessageCircle className="w-4 h-4 mr-1.5" />
                 WhatsApp
               </Button>
@@ -156,7 +156,7 @@ export default function MemberDetailPage() {
               </Button>
             </a>
             <Link href="/alerts">
-              <Button variant="danger" size="sm">
+              <Button variant="destructive" size="sm">
                 <AlertTriangle className="w-4 h-4 mr-1.5" />
                 Créer Alerte
               </Button>

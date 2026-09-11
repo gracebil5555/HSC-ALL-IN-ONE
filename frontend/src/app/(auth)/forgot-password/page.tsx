@@ -83,7 +83,7 @@ export default function ForgotPasswordPage() {
             />
           </div>
 
-          <Button type="submit" variant="primary" className="w-full">
+          <Button type="submit" variant="default" className="w-full">
             Envoyer le lien de réinitialisation
           </Button>
         </form>

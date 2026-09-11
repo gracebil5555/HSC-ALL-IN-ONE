@@ -1,26 +1,43 @@
 import { Asset, StockItem, StockMovement } from "@/types/patrimoine.types";
-import { MOCK_ASSETS, MOCK_STOCKS, MOCK_MOVEMENTS } from "@/mocks/patrimoine.mock";
-
-const assetsDb: Asset[] = [...MOCK_ASSETS];
-const stocksDb: StockItem[] = [...MOCK_STOCKS];
-let movementsDb: StockMovement[] = [...MOCK_MOVEMENTS];
+import { apiClient } from "@/lib/apiClient";
 
 export const patrimoineService = {
   getAssets: async (campusId?: string | null): Promise<Asset[]> => {
-    await new Promise((res) => setTimeout(res, 80));
-    if (!campusId || campusId === "all") return [...assetsDb];
-    return assetsDb.filter((a) => a.campus_id === campusId);
+    try {
+      const response = await apiClient.get('/patrimoine/assets/');
+      let assets = response.data;
+      if (campusId && campusId !== "all") {
+        assets = assets.filter((a: any) => a.campus === parseInt(campusId));
+      }
+      return assets;
+    } catch (error) {
+      console.error("Error fetching assets:", error);
+      return [];
+    }
   },
 
   getStocks: async (campusId?: string | null): Promise<StockItem[]> => {
-    await new Promise((res) => setTimeout(res, 80));
-    if (!campusId || campusId === "all") return [...stocksDb];
-    return stocksDb.filter((s) => s.campus_id === campusId);
+    try {
+      const response = await apiClient.get('/patrimoine/consumables/');
+      let stocks = response.data;
+      if (campusId && campusId !== "all") {
+        stocks = stocks.filter((s: any) => s.campus === parseInt(campusId));
+      }
+      return stocks;
+    } catch (error) {
+      console.error("Error fetching stocks:", error);
+      return [];
+    }
   },
 
   getMovements: async (): Promise<StockMovement[]> => {
-    await new Promise((res) => setTimeout(res, 60));
-    return [...movementsDb];
+    try {
+      const response = await apiClient.get('/patrimoine/movements/');
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching stock movements:", error);
+      return [];
+    }
   },
 
   addStockMovement: async (
@@ -28,34 +45,22 @@ export const patrimoineService = {
     type: "IN" | "OUT",
     quantity: number,
     reason: string,
-    requestedBy: string
+    requestedBy: string // Could map this to user ID later
   ): Promise<StockMovement> => {
-    await new Promise((res) => setTimeout(res, 100));
-    const stockIndex = stocksDb.findIndex((s) => s.id === stockItemId);
-    if (stockIndex !== -1) {
-      if (type === "IN") {
-        stocksDb[stockIndex].quantity_in_stock += quantity;
-      } else {
-        stocksDb[stockIndex].quantity_in_stock = Math.max(
-          0,
-          stocksDb[stockIndex].quantity_in_stock - quantity
-        );
-      }
+    try {
+      const payload = {
+        item: stockItemId,
+        movement_type: type,
+        quantity: quantity,
+        reason: reason,
+        campus: 1 // Defaults to campus 1
+      };
+      
+      const response = await apiClient.post('/patrimoine/movements/', payload);
+      return response.data;
+    } catch (error) {
+      console.error("Error adding stock movement:", error);
+      throw error;
     }
-
-    const stock = stocksDb[stockIndex];
-    const movement: StockMovement = {
-      id: `mvt-${Date.now().toString().slice(-4)}`,
-      stock_item_id: stockItemId,
-      stock_item_name: stock ? stock.name : "Article",
-      movement_type: type,
-      quantity,
-      reason,
-      requested_by_name: requestedBy,
-      created_at: new Date().toISOString().replace("T", " ").slice(0, 16),
-    };
-
-    movementsDb = [movement, ...movementsDb];
-    return movement;
   },
 };

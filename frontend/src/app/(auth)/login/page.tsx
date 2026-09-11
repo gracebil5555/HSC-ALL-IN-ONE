@@ -4,8 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTenant } from "@/context/TenantContext";
-import { MOCK_USERS } from "@/mocks/campuses.mock";
-import { Eye, EyeOff, Lock, Mail, Building2, Sparkles } from "lucide-react";
+import { authService } from "@/services/auth.service";
+import { Eye, EyeOff, Lock, Mail, Building2, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
 
@@ -17,27 +17,28 @@ export default function LoginPage() {
   const [password, setPassword] = useState("••••••••••••");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    setErrorMsg("");
+    try {
+      // Login to get JWT
+      await authService.login(email, password);
+      // Fetch user profile
+      const user = await authService.getCurrentUser();
+      setCurrentUser(user);
+      
       router.push("/dashboard");
-    }, 600);
+    } catch (err) {
+      setErrorMsg("Identifiants incorrects. Veuillez réessayer.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleFastLogin = (userKey: keyof typeof MOCK_USERS) => {
-    const user = MOCK_USERS[userKey];
-    setCurrentUser(user);
-    if (user.campus_id) {
-      setCurrentCampusId(user.campus_id);
-    } else {
-      setCurrentCampusId("all");
-    }
-    setEmail(user.email);
-    router.push("/dashboard");
-  };
+
 
   return (
     <div className="mx-auto w-full max-w-md">
@@ -67,48 +68,6 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* Demo Fast Logins */}
-      <div className="mb-6 p-3.5 rounded-xl bg-brand-50/70 border border-brand-100 dark:bg-brand-500/10 dark:border-brand-500/20">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-brand-700 dark:text-brand-400 mb-2">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Accès Rapide Démo (RBAC) :</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <button
-            type="button"
-            onClick={() => handleFastLogin("apostle")}
-            className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-brand-400 text-left transition-colors cursor-pointer shadow-theme-xs"
-          >
-            <span className="font-semibold block text-gray-800 dark:text-white truncate">Apôtre Roland G.</span>
-            <span className="text-[10px] text-brand-600 dark:text-brand-400">Super-Super Admin</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleFastLogin("pastor_mpita")}
-            className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-brand-400 text-left transition-colors cursor-pointer shadow-theme-xs"
-          >
-            <span className="font-semibold block text-gray-800 dark:text-white truncate">Pasteur Alain K.</span>
-            <span className="text-[10px] text-brand-600 dark:text-brand-400">Pasteur Mpita</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleFastLogin("treasurer")}
-            className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-brand-400 text-left transition-colors cursor-pointer shadow-theme-xs"
-          >
-            <span className="font-semibold block text-gray-800 dark:text-white truncate">Grace Mavoungou</span>
-            <span className="text-[10px] text-brand-600 dark:text-brand-400">Gestion Caisse</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleFastLogin("brigade_leader")}
-            className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-brand-400 text-left transition-colors cursor-pointer shadow-theme-xs"
-          >
-            <span className="font-semibold block text-gray-800 dark:text-white truncate">Séraphin Mabiala</span>
-            <span className="text-[10px] text-brand-600 dark:text-brand-400">Chef de Brigade</span>
-          </button>
-        </div>
-      </div>
-
       <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
         <div>
           <Label htmlFor="email" required>
@@ -116,7 +75,7 @@ export default function LoginPage() {
           </Label>
           <Input
             id="email"
-            type="email"
+            type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             startIcon={<Mail className="w-4 h-4" />}
@@ -168,8 +127,8 @@ export default function LoginPage() {
 
         <Button
           type="submit"
-          variant="primary"
-          size="md"
+          variant="default"
+          size="default"
           isLoading={isLoading}
           className="w-full py-3"
         >

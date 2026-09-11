@@ -270,7 +270,7 @@ export default function VoiceToActionPage() {
                 <span>Synchronisé avec succès dans Django ORM !</span>
               </div>
             ) : (
-              <Button variant="primary" size="md" onClick={handleConfirmSync}>
+              <Button variant="default" size="default" onClick={handleConfirmSync}>
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Valider en 1 Clic
               </Button>

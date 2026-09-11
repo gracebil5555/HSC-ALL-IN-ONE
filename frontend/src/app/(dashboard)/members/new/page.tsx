@@ -258,7 +258,7 @@ export default function NewMemberPage() {
               Annuler
             </Button>
           </Link>
-          <Button type="submit" variant="primary" isLoading={isSaving}>
+          <Button type="submit" variant="default" isLoading={isSaving}>
             <Save className="w-4 h-4 mr-2" />
             Enregistrer le fidèle
           </Button>

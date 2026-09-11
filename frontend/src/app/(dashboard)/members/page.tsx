@@ -81,7 +81,7 @@ export default function MembersPage() {
         breadcrumbs={[{ label: "Membres" }]}
         action={
           <Link href="/members/new">
-            <Button variant="primary" size="md">
+            <Button variant="default" size="default">
               <UserPlus className="w-4 h-4 mr-2" />
               Nouveau Membre
             </Button>

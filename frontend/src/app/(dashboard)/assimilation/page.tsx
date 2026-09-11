@@ -104,7 +104,7 @@ export default function AssimilationKanbanPage() {
         ]}
         action={
           <Link href="/members/new">
-            <Button variant="primary" size="sm">
+            <Button variant="default" size="sm">
               <PlusCircle className="w-4 h-4 mr-1.5" />
               Accueillir une Âme
             </Button>

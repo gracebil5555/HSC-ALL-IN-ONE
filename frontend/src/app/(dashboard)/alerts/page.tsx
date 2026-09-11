@@ -173,7 +173,7 @@ export default function AlertsPage() {
         description="Prise en charge des urgences hospitalières, deuils familiaux, soutien social et décrochages de culte"
         breadcrumbs={[{ label: "Alertes Pastorales" }]}
         action={
-          <Button variant="danger" size="md" onClick={() => setIsNewAlertOpen(true)}>
+          <Button variant="destructive" size="default" onClick={() => setIsNewAlertOpen(true)}>
             <PlusCircle className="w-4 h-4 mr-2" />
             Déclarer une Alerte
           </Button>
@@ -298,7 +298,7 @@ export default function AlertsPage() {
               <TableCell className="text-right">
                 {alert.status === "OPEN" && (
                   <Button
-                    variant="primary"
+                    variant="default"
                     size="sm"
                     className="h-8 px-2.5 text-xs"
                     onClick={() => updateAlertStatus(alert.id, "ASSIGNED")}
@@ -427,7 +427,7 @@ export default function AlertsPage() {
               <Button type="button" variant="outline" onClick={() => setIsNewAlertOpen(false)}>
                 Annuler
               </Button>
-              <Button type="submit" variant="danger">
+              <Button type="submit" variant="destructive">
                 Diffuser l'alerte
               </Button>
             </div>

@@ -78,7 +78,7 @@ export default function StocksPage() {
           { label: "Stocks Consommables" },
         ]}
         action={
-          <Button variant="primary" size="md" onClick={() => setIsModalOpen(true)}>
+          <Button variant="default" size="default" onClick={() => setIsModalOpen(true)}>
             <Plus className="w-4 h-4 mr-1.5" />
             Nouveau Mouvement de Stock
           </Button>
@@ -332,7 +332,7 @@ export default function StocksPage() {
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Annuler
               </Button>
-              <Button type="submit" variant="primary">
+              <Button type="submit" variant="default">
                 Valider le mouvement
               </Button>
             </div>

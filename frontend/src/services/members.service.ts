@@ -1,42 +1,59 @@
 import { Member } from "@/types/member.types";
-import { MOCK_MEMBERS } from "@/mocks/members.mock";
-
-let membersDatabase: Member[] = [...MOCK_MEMBERS];
+import { apiClient } from "@/lib/apiClient";
 
 export const membersService = {
   getMembers: async (campusId?: string | null): Promise<Member[]> => {
-    // Simulates an async API call to Django REST Framework
-    await new Promise((res) => setTimeout(res, 80));
-    if (!campusId || campusId === "all") {
-      return [...membersDatabase];
+    try {
+      const response = await apiClient.get('/members/list/');
+      let members = response.data;
+      if (campusId && campusId !== "all") {
+        members = members.filter((m: any) => m.campus === parseInt(campusId));
+      }
+      return members;
+    } catch (error) {
+      console.error("Error fetching members:", error);
+      return [];
     }
-    return membersDatabase.filter((m) => m.campus_id === campusId);
   },
 
   getMemberById: async (id: string): Promise<Member | null> => {
-    await new Promise((res) => setTimeout(res, 50));
-    return membersDatabase.find((m) => m.id === id) || null;
+    try {
+      const response = await apiClient.get(`/members/list/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching member ${id}:`, error);
+      return null;
+    }
   },
 
   createMember: async (data: Omit<Member, "id" | "joined_date">): Promise<Member> => {
-    await new Promise((res) => setTimeout(res, 120));
-    const newMember: Member = {
-      ...data,
-      id: `mbr-${Date.now().toString().slice(-4)}`,
-      joined_date: new Date().toISOString().split("T")[0],
-    };
-    membersDatabase = [newMember, ...membersDatabase];
-    return newMember;
+    try {
+      const payload = {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.phone,
+        campus: data.campus_id ? parseInt(data.campus_id) : 1,
+        status: 'NOUVEAU', // Default status for backend
+      };
+      const response = await apiClient.post('/members/list/', payload);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating member:", error);
+      throw error;
+    }
   },
 
   updateMemberStage: async (id: string, stage: Member["assimilation_stage"]): Promise<Member | null> => {
-    await new Promise((res) => setTimeout(res, 80));
-    const index = membersDatabase.findIndex((m) => m.id === id);
-    if (index === -1) return null;
-    membersDatabase[index] = {
-      ...membersDatabase[index],
-      assimilation_stage: stage,
-    };
-    return membersDatabase[index];
+    try {
+      // Assuming 'assimilation_stage' is tracked via the assimilation profiles API
+      // Since our Member model doesn't have assimilation_stage directly, we might need a separate endpoint
+      // Or if it's meant to update status:
+      const payload = { status: stage }; // Temporarily mapped to status for frontend demo
+      const response = await apiClient.patch(`/members/list/${id}/`, payload);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating member ${id} stage:`, error);
+      return null;
+    }
   },
 };

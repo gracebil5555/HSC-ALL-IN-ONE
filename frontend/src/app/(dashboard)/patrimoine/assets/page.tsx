@@ -82,7 +82,7 @@ export default function AssetsPage() {
           { label: "Actifs" },
         ]}
         action={
-          <Button variant="primary" size="md">
+          <Button variant="default" size="default">
             <PlusCircle className="w-4 h-4 mr-2" />
             Nouvel Actif
           </Button>
@@ -284,7 +284,7 @@ export default function AssetsPage() {
             </div>
 
             <Button
-              variant="primary"
+              variant="default"
               size="sm"
               onClick={() => window.print()}
               className="mt-2"

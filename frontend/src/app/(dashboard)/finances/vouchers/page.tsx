@@ -133,7 +133,7 @@ export default function VouchersPage() {
           { label: "Pièces de Caisse" },
         ]}
         action={
-          <Button variant="primary" size="md" onClick={() => setIsNewVoucherModalOpen(true)}>
+          <Button variant="default" size="default" onClick={() => setIsNewVoucherModalOpen(true)}>
             <PlusCircle className="w-4 h-4 mr-2" />
             Nouvelle Pièce de Caisse
           </Button>
@@ -297,7 +297,7 @@ export default function VouchersPage() {
                   <div className="flex items-center justify-end gap-1.5">
                     {vch.status === "PENDING" && (
                       <Button
-                        variant="primary"
+                        variant="default"
                         size="sm"
                         className="h-8 px-2.5 text-xs"
                         onClick={() => setSelectedVoucherForApproval(vch)}
@@ -373,7 +373,7 @@ export default function VouchersPage() {
               <Button variant="outline" size="sm" onClick={() => setSelectedVoucherForApproval(null)}>
                 Annuler
               </Button>
-              <Button variant="primary" size="sm" onClick={handleApprove}>
+              <Button variant="default" size="sm" onClick={handleApprove}>
                 <CheckCircle2 className="w-4 h-4 mr-1" />
                 Approuver la pièce
               </Button>
@@ -420,7 +420,7 @@ export default function VouchersPage() {
               <Button variant="outline" size="sm" onClick={() => setSelectedVoucherForDisbursement(null)}>
                 Annuler
               </Button>
-              <Button variant="success" size="sm" onClick={handleDisburse}>
+              <Button variant="default" className="bg-green-600 hover:bg-green-700 text-white" size="sm" onClick={handleDisburse}>
                 <Banknote className="w-4 h-4 mr-1" />
                 Confirmer le décaissement
               </Button>
@@ -544,7 +544,7 @@ export default function VouchersPage() {
               <Button type="button" variant="outline" onClick={() => setIsNewVoucherModalOpen(false)}>
                 Annuler
               </Button>
-              <Button type="submit" variant="primary">
+              <Button type="submit" variant="default">
                 Soumettre à validation (PENDING)
               </Button>
             </div>

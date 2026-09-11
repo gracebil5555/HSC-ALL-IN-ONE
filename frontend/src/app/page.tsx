@@ -1,5 +1,7 @@
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  redirect("/dashboard");
+  // Rediriger automatiquement vers la page de connexion
+  // ou le dashboard selon la logique de votre application
+  redirect('/login');
 }

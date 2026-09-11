@@ -12,6 +12,8 @@ export interface Member {
   phone: string;
   whatsapp: string;
   residential_area: string; // Ex: "Mpita", "Ngoyo", "Tié-Tié", "Paka", "Centre-ville"
+  status?: string;
+  date_of_birth?: string | null;
   campus_id: string;
   brigade_id: string | null; // OPTIONNELLE : null = "Non affecté"
   brigade_name?: string;

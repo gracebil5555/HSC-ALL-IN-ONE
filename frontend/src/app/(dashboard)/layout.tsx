@@ -4,13 +4,21 @@ import React from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Backdrop } from "@/components/layout/Backdrop";
-import { useSidebar } from "@/context/SidebarContext";
+import { useSidebar, SidebarProvider } from "@/context/SidebarContext";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <SidebarProvider>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </SidebarProvider>
+  )
+}
+
+function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { isExpanded, isHovered } = useSidebar();
 
   const isWide = isExpanded || isHovered;
