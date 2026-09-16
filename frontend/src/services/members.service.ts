@@ -45,15 +45,36 @@ export const membersService = {
 
   updateMemberStage: async (id: string, stage: Member["assimilation_stage"]): Promise<Member | null> => {
     try {
-      // Assuming 'assimilation_stage' is tracked via the assimilation profiles API
-      // Since our Member model doesn't have assimilation_stage directly, we might need a separate endpoint
-      // Or if it's meant to update status:
-      const payload = { status: stage }; // Temporarily mapped to status for frontend demo
+      const payload = { status: stage };
       const response = await apiClient.patch(`/members/list/${id}/`, payload);
       return response.data;
     } catch (error) {
       console.error(`Error updating member ${id} stage:`, error);
       return null;
+    }
+  },
+
+  getBrigades: async (campusId?: string | null): Promise<any[]> => {
+    try {
+      const response = await apiClient.get('/members/brigades/');
+      let brigades = response.data;
+      if (campusId && campusId !== "all") {
+        brigades = brigades.filter((b: any) => b.campus === parseInt(campusId));
+      }
+      return brigades;
+    } catch (error) {
+      console.error("Error fetching brigades:", error);
+      return [];
+    }
+  },
+
+  createBrigade: async (data: { name: string; neighborhood?: string; campus: number }): Promise<any> => {
+    try {
+      const response = await apiClient.post('/members/brigades/', data);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating brigade:", error);
+      throw error;
     }
   },
 };

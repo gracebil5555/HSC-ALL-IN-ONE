@@ -20,7 +20,7 @@ export const CampusSelector: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const canSwitchCampus = currentUser.role === "SUPER_SUPER_ADMIN";
+  const canSwitchCampus = currentUser?.role === "SUPER_SUPER_ADMIN";
 
   return (
     <div className="relative" ref={dropdownRef}>

@@ -84,7 +84,7 @@ export default function DashboardPage() {
                 )}
               </div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-                Bienvenue, {currentUser.title} {currentUser.last_name}
+                Bienvenue, {currentUser ? `${currentUser.title || ""} ${currentUser.last_name || ""}`.trim() : "Cher Serviteur"}
               </h1>
             <p className="mt-1 text-sm text-brand-100/85 max-w-2xl leading-relaxed">
               {isGlobalScope

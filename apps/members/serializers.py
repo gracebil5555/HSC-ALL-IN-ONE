@@ -3,6 +3,8 @@ from .models import Brigade, Member, Attendance, PastoralAlert
 
 class BrigadeSerializer(serializers.ModelSerializer):
     leader_name = serializers.CharField(source='leader.get_full_name', read_only=True)
+    leader_phone = serializers.CharField(source='leader.phone', read_only=True)
+    members_count = serializers.IntegerField(source='members.count', read_only=True)
 
     class Meta:
         model = Brigade

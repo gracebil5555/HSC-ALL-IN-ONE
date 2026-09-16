@@ -60,9 +60,10 @@ export default function VouchersPage() {
 
   const handleApprove = async () => {
     if (!selectedVoucherForApproval) return;
+    const approverName = currentUser ? `${currentUser.title || ""} ${currentUser.last_name || ""}`.trim() : "Administrateur";
     await financesService.approveVoucher(
       selectedVoucherForApproval.id,
-      `${currentUser.title} ${currentUser.last_name}`,
+      approverName,
       approvalNote
     );
     setSelectedVoucherForApproval(null);
@@ -71,9 +72,10 @@ export default function VouchersPage() {
 
   const handleDisburse = async () => {
     if (!selectedVoucherForDisbursement) return;
+    const disburserName = currentUser ? `${currentUser.title || ""} ${currentUser.last_name || ""}`.trim() : "Trésorier";
     await financesService.disburseVoucher(
       selectedVoucherForDisbursement.id,
-      `${currentUser.title} ${currentUser.last_name}`,
+      disburserName,
       disbursementNote
     );
     setSelectedVoucherForDisbursement(null);
@@ -82,13 +84,14 @@ export default function VouchersPage() {
 
   const handleCreateVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
+    const requesterName = currentUser ? `${currentUser.title || ""} ${currentUser.last_name || ""}`.trim() : "Demandeur";
     await financesService.createVoucher({
       beneficiary: newBeneficiary,
       department_name: newDepartment,
       amount: Number(newAmount),
       purpose: newPurpose,
       campus_id: currentCampusId === "all" ? "campus-mpita-hq" : currentCampusId,
-      requested_by_name: `${currentUser.title} ${currentUser.last_name}`,
+      requested_by_name: requesterName,
     });
     setIsNewVoucherModalOpen(false);
     setNewBeneficiary("");

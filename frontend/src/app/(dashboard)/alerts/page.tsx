@@ -154,7 +154,7 @@ export default function AlertsPage() {
       alert_type: newType,
       severity: newSeverity,
       description: newDesc,
-      reported_by_name: `${currentUser.title} ${currentUser.last_name}`,
+      reported_by_name: currentUser ? `${currentUser.title || ""} ${currentUser.last_name || ""}`.trim() : "Fidèle Anonyme",
       assigned_pastor_name: "Pasteur Alain Kimbembe",
       status: "OPEN",
       created_at: new Date().toISOString().replace("T", " ").slice(0, 16),

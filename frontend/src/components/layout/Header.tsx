@@ -182,28 +182,28 @@ export const Header: React.FC = () => {
             className="flex items-center gap-2.5 p-1 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
           >
             <div className="w-9 h-9 rounded-xl overflow-hidden bg-brand-100 border border-brand-200 dark:border-brand-800 shrink-0">
-              {currentUser.avatar ? (
+              {currentUser?.avatar ? (
                 <img
                   src={currentUser.avatar}
-                  alt={`${currentUser.first_name} ${currentUser.last_name}`}
+                  alt={`${currentUser.first_name || ""} ${currentUser.last_name || ""}`}
                   className="w-full h-full object-cover"
                 />
               ) : (
                 <div className="flex items-center justify-center w-full h-full text-brand-600 font-bold text-xs">
-                  {currentUser.first_name[0]}
-                  {currentUser.last_name[0]}
+                  {currentUser?.first_name?.[0] || "H"}
+                  {currentUser?.last_name?.[0] || "S"}
                 </div>
               )}
             </div>
 
             <div className="hidden lg:flex flex-col text-left">
               <span className="text-xs font-semibold text-gray-800 dark:text-white/90 leading-tight">
-                {currentUser.title} {currentUser.last_name}
+                {currentUser ? `${currentUser.title || ""} ${currentUser.last_name || ""}`.trim() : "Utilisateur"}
               </span>
               <span className="text-[10px] text-gray-400 leading-tight">
-                {currentUser.role === "SUPER_SUPER_ADMIN"
+                {currentUser?.role === "SUPER_SUPER_ADMIN"
                   ? "Réseau Mondial"
-                  : currentUser.role}
+                  : currentUser?.role || "Membre"}
               </span>
             </div>
 
@@ -214,12 +214,12 @@ export const Header: React.FC = () => {
             <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-900 z-99999 animate-in fade-in zoom-in-95 duration-100">
               <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 mb-2">
                 <p className="text-xs font-semibold text-gray-800 dark:text-white/90">
-                  {currentUser.title} {currentUser.first_name} {currentUser.last_name}
+                  {currentUser ? `${currentUser.title || ""} ${currentUser.first_name || ""} ${currentUser.last_name || ""}`.trim() : "Non connecté"}
                 </p>
-                <p className="text-[11px] text-gray-400 truncate">{currentUser.email}</p>
+                <p className="text-[11px] text-gray-400 truncate">{currentUser?.email || "session locale"}</p>
                 <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-brand-600 dark:text-brand-400 font-medium">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Rôle actif : {currentUser.role}</span>
+                  <span>Rôle actif : {currentUser?.role || "Invité"}</span>
                 </div>
               </div>
 
@@ -237,7 +237,7 @@ export const Header: React.FC = () => {
                         setIsUserOpen(false);
                       }}
                       className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
-                        currentUser.id === user.id
+                        currentUser?.id === user.id
                           ? "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400 font-medium"
                           : "text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5"
                       }`}
