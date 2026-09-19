@@ -59,10 +59,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Top Banner / Welcome */}
-      <div className="rounded-2xl bg-gradient-to-r from-brand-900 via-brand-700 to-brand-600 p-6 md:p-8 text-white shadow-theme-md relative overflow-hidden">
+      <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-6 md:p-8 text-white shadow-lg relative overflow-hidden border border-slate-800">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="flex items-start sm:items-center gap-4 md:gap-5">
-            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white p-1.5 shadow-theme-md shrink-0 flex items-center justify-center border border-white/20">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white p-1.5 shadow-md shrink-0 flex items-center justify-center border border-white/20">
               <img
                 src="/logo-hsc.jpg"
                 alt="Logo HSC"
@@ -70,7 +70,7 @@ export default function DashboardPage() {
               />
             </div>
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-brand-100 text-xs font-medium mb-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-blue-200 text-xs font-medium mb-2 border border-white/10">
                 {isGlobalScope ? (
                   <>
                     <Globe2 className="w-3.5 h-3.5" />
@@ -83,10 +83,10 @@ export default function DashboardPage() {
                   </>
                 )}
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
                 Bienvenue, {currentUser ? `${currentUser.title || ""} ${currentUser.last_name || ""}`.trim() : "Cher Serviteur"}
               </h1>
-            <p className="mt-1 text-sm text-brand-100/85 max-w-2xl leading-relaxed">
+            <p className="mt-1 text-sm text-blue-100/80 max-w-2xl leading-relaxed">
               {isGlobalScope
                 ? "Supervision globale du réseau HSC : 5 implantations actives, consolidation des effectifs, flux de trésorerie et alertes spirituelles."
                 : `Gestion opérationnelle locale : culte dominical, intendance des actifs, validation des pièces et pipeline d'assimilation des âmes.`}
@@ -96,14 +96,14 @@ export default function DashboardPage() {
 
           <div className="flex flex-wrap items-center gap-2.5">
             <Link href="/members/new">
-              <Button variant="outline" size="sm" className="bg-white/10 text-white ring-white/20 hover:bg-white/20 border-0">
+              <Button variant="outline" size="sm" className="bg-white/10 text-white hover:bg-white/20 border border-white/20">
                 <PlusCircle className="w-4 h-4 mr-1.5" />
                 Nouveau Membre
               </Button>
             </Link>
             <Link href="/ai/voice-to-action">
-              <Button variant="default" size="sm" className="bg-white text-brand-900 hover:bg-brand-50 shadow-none font-semibold">
-                <Mic className="w-4 h-4 mr-1.5 text-brand-600" />
+              <Button variant="default" size="sm" className="bg-white text-slate-900 hover:bg-slate-100 shadow-none font-semibold">
+                <Mic className="w-4 h-4 mr-1.5 text-blue-600" />
                 Note Vocale IA
               </Button>
             </Link>
