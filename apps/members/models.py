@@ -27,6 +27,21 @@ class Member(TenantBoundModel):
         ('SUSPENDU', 'Suspendu'),
     ]
 
+    # Fonctions ecclésiales configurables (Section 22 & 25)
+    ECCLESIAL_FUNCTION_CHOICES = [
+        ("PASTEUR", "Pasteur"),
+        ("ANCIEN", "Ancien"),
+        ("DIACRE", "Diacre"),
+        ("EVANGELISTE", "Évangéliste"),
+        ("DOCTEUR", "Docteur"),
+        ("PROPHETE", "Prophète"),
+        ("BERGER", "Berger"),
+        ("RESPONSABLE_DEPT", "Responsable de Département"),
+        ("ADJOINT_DEPT", "Adjoint de Département"),
+        ("OUVRIER", "Ouvrier"),
+        ("MEMBRE", "Membre"),
+    ]
+
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     phone = models.CharField(max_length=30, blank=True)
@@ -35,10 +50,23 @@ class Member(TenantBoundModel):
     date_of_birth = models.DateField(null=True, blank=True)
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='NOUVEAU')
+    ecclesial_function = models.CharField(
+        max_length=30, 
+        choices=ECCLESIAL_FUNCTION_CHOICES, 
+        default='MEMBRE'
+    )
     
-    # Brigade is optional (non affecté)
+    # Brigade / GDC
     brigade = models.ForeignKey(
         Brigade,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='members'
+    )
+    # Département de service
+    department = models.ForeignKey(
+        'departments.Department',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

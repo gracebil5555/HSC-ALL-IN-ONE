@@ -2,7 +2,7 @@ from django.conf import settings
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
 from apps.campuses.views import CampusViewSet
-from apps.departments.views import DepartmentViewSet
+from apps.departments.views import DepartmentViewSet, DepartmentCatalogViewSet
 from apps.users.views import UserViewSet
 from apps.finances.views import RegisterViewSet, VoucherViewSet, TransactionViewSet
 from apps.members.views import BrigadeViewSet, MemberViewSet, AttendanceViewSet, PastoralAlertViewSet
@@ -17,8 +17,10 @@ else:
     router = SimpleRouter()
 
 router.register("campuses", CampusViewSet)
+router.register("departments/catalog", DepartmentCatalogViewSet, basename="department-catalog")
 router.register("departments", DepartmentViewSet)
 router.register("users", UserViewSet)
+
 router.register("finances/registers", RegisterViewSet)
 router.register("finances/vouchers", VoucherViewSet)
 router.register("finances/transactions", TransactionViewSet)
