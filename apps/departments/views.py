@@ -1,5 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from apps.users.permissions import IsSuperAdmin
 from .models import Department, DepartmentCatalog
 from .serializers import DepartmentSerializer, DepartmentCatalogSerializer
 
@@ -16,11 +17,16 @@ class DepartmentCatalogViewSet(viewsets.ModelViewSet):
 class DepartmentViewSet(viewsets.ModelViewSet):
     """
     Gestion des départements activés ou créés par une Église donnée.
+    Création réservée au Super Admin de l'Église (Section 6 & 8).
     Permet le filtrage par ?campus_id=<id>
     """
-    queryset = Department.objects.all()
+    queryset = Department.objects.all().select_related("campus", "admin", "deputy", "catalog_item")
     serializer_class = DepartmentSerializer
-    permission_classes = [AllowAny]
+
+    def get_permissions(self):
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [IsAuthenticated(), IsSuperAdmin()]
+        return [AllowAny()]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -28,4 +34,5 @@ class DepartmentViewSet(viewsets.ModelViewSet):
         if campus_id and campus_id != 'all':
             qs = qs.filter(campus_id=campus_id)
         return qs
+
 

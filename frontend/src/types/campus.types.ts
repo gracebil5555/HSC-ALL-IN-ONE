@@ -3,9 +3,12 @@ export type CampusType = "HQ" | "EXTENSION" | "FOYER";
 export interface Campus {
   id: string;
   name: string;
+  code?: string;
   campus_type: CampusType;
   country: string;
   city: string;
+  address?: string;
+  parent?: string | number | null;
   lead_pastor_name: string;
   enable_brigades: boolean;
   enable_patrimoine: boolean;
@@ -14,3 +17,4 @@ export interface Campus {
   is_active: boolean;
   member_count: number;
 }
+

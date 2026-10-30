@@ -20,6 +20,7 @@ import {
   Church,
   X,
   History,
+  UserCheck,
 } from "lucide-react";
 
 interface MenuItem {
@@ -71,6 +72,12 @@ export const Sidebar: React.FC = () => {
           name: "Brigades & GDC",
           path: "/brigades",
           icon: <Church className="w-5 h-5" />,
+        },
+        {
+          name: "Comptes & Accès",
+          path: "/users",
+          icon: <UserCheck className="w-5 h-5" />,
+          badge: "RBAC",
         },
       ],
     },
