@@ -47,7 +47,7 @@ class Command(BaseCommand):
                 "title": "Pasteur",
                 "ecclesial_function": "PASTEUR",
                 "role": "SUPER_ADMIN",
-                "password": "12345678",
+                "password": "Password123!",
             },
             {
                 "username": "kelly.makosso",
@@ -57,7 +57,7 @@ class Command(BaseCommand):
                 "title": "Pasteur",
                 "ecclesial_function": "PASTEUR",
                 "role": "SUPER_ADMIN",
-                "password": "12345678",
+                "password": "Password123!",
             },
             {
                 "username": "blanchard.ngoy",
@@ -67,7 +67,7 @@ class Command(BaseCommand):
                 "title": "Pasteur",
                 "ecclesial_function": "PASTEUR",
                 "role": "SUPER_ADMIN",
-                "password": "12345678",
+                "password": "Password123!",
             },
             {
                 "username": "antony.missamou",
@@ -77,7 +77,7 @@ class Command(BaseCommand):
                 "title": "Berger",
                 "ecclesial_function": "BERGER",
                 "role": "SUPER_ADMIN",
-                "password": "12345678",
+                "password": "Password123!",
             },
             {
                 "username": "stevi.dibala",
@@ -87,7 +87,7 @@ class Command(BaseCommand):
                 "title": "Pasteur",
                 "ecclesial_function": "PASTEUR",
                 "role": "SUPER_ADMIN",
-                "password": "12345678",
+                "password": "Password123!",
             },
         ]
 

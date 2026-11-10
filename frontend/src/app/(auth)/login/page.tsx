@@ -176,7 +176,7 @@ export default function LoginPage() {
 
           <button
             type="button"
-            onClick={() => selectAccount("chancel.niati@hsc-eglise.org", "12345678")}
+            onClick={() => selectAccount("chancel.niati@hsc-eglise.org", "Password123!")}
             className="w-full text-left p-2.5 rounded-lg border border-gray-200 dark:border-gray-700/80 hover:border-brand-500 dark:hover:border-brand-500 hover:bg-brand-50/50 dark:hover:bg-brand-500/5 transition-all text-xs flex items-center justify-between group"
           >
             <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ export default function LoginPage() {
               </div>
             </div>
             <span className="text-[11px] font-mono text-gray-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
-              12345678
+              Password123!
             </span>
           </button>
         </div>
