@@ -1,25 +1,40 @@
 """
 URL configuration for config project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.1/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
+def root_api_index(request):
+    """
+    Page d'accueil de l'API pour éviter le 404 lorsque l'utilisateur visite la racine.
+    """
+    return JsonResponse({
+        "system": "HSC Management System API",
+        "status": "online",
+        "version": "1.0.0",
+        "description": "Plateforme ecclésiale multi-sites Hauts Standards pour Christ",
+        "documentation": {
+            "swagger_ui": "/api/docs/",
+            "redoc": "/api/redoc/",
+            "openapi_schema": "/api/schema/"
+        },
+        "endpoints": {
+            "admin": "/admin/",
+            "auth_token": "/api/v1/auth/jwt/create/",
+            "auth_refresh": "/api/v1/auth/jwt/refresh/",
+            "campuses": "/api/v1/campuses/",
+            "users": "/api/v1/users/",
+            "departments": "/api/v1/departments/",
+            "members": "/api/v1/members/list/",
+            "finances": "/api/v1/finances/transactions/"
+        }
+    })
+
 urlpatterns = [
+    path('', root_api_index, name='api-root-index'),
     path('admin/', admin.site.urls),
     
     # API endpoints

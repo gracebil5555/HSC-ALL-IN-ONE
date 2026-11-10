@@ -68,6 +68,15 @@ export default function UsersManagementPage() {
   const { currentCampusId, currentCampus, campuses } = useTenant();
   const { isSuperSuperAdmin, isSuperAdmin } = useRole();
 
+  // Hiérarchie MVC / RBAC stricte :
+  // - Seul le Super Super Admin peut nommer un Super Admin (Pasteur d'extension / église)
+  // - Le Super Admin peut créer des Admin Dept, Adjoints et Membres dans son église
+  const availableRoles = ROLE_OPTIONS.filter((r) => {
+    if (r.value === "SUPER_SUPER_ADMIN") return false; // Titre unique mondial
+    if (r.value === "SUPER_ADMIN") return isSuperSuperAdmin; // Seul le Visionnaire nomme des Super Admins
+    return true; // ADMIN_DEPT, ADJOINT, MEMBRE
+  });
+
   const [users, setUsers] = useState<CurrentUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -595,12 +604,17 @@ export default function UsersManagementPage() {
                 onChange={(e) => setCreateForm({ ...createForm, role: e.target.value as UserRole })}
                 className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
               >
-                {ROLE_OPTIONS.map((r) => (
+                {availableRoles.map((r) => (
                   <option key={r.value} value={r.value}>
-                    {r.label}
+                    {r.label} — {r.desc}
                   </option>
                 ))}
               </select>
+              {isSuperSuperAdmin && (
+                <p className="text-[10px] text-brand-600 dark:text-brand-400 mt-1">
+                  ✓ En tant que Super Super Admin, vous pouvez désigner des Super Admins (Pasteurs responsables d'églises).
+                </p>
+              )}
             </div>
 
             <div>

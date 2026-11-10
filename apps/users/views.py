@@ -54,6 +54,49 @@ class UserViewSet(RoleFilterMixin, viewsets.ModelViewSet):
             return [IsAuthenticated(), IsSuperAdmin()]
         return [IsAuthenticated()]
 
+    def perform_create(self, serializer):
+        """
+        Contrôle d'accès strict MVC / RBAC à la création d'utilisateurs :
+          - Seul le SUPER_SUPER_ADMIN peut nommer un SUPER_ADMIN ou un autre SUPER_SUPER_ADMIN.
+          - Le SUPER_ADMIN peut uniquement créer des ADMIN_DEPT, ADJOINT et MEMBRE dans son propre campus.
+        """
+        from rest_framework.exceptions import PermissionDenied
+        from .permissions import _has_role
+
+        creator = self.request.user
+        target_role = serializer.validated_data.get("role", "MEMBRE")
+        target_campus = serializer.validated_data.get("campus")
+
+        # Seul le Visionnaire (SUPER_SUPER_ADMIN) peut nommer des Super Admins (pasteurs d'églises)
+        if not _has_role(creator, "SUPER_SUPER_ADMIN"):
+            if target_role in ("SUPER_SUPER_ADMIN", "SUPER_ADMIN"):
+                raise PermissionDenied(
+                    "Action refusée : Seul le Super Super Admin (Visionnaire mondial) a l'autorité de créer ou nommer un Super Admin."
+                )
+            # Un Super Admin est restreint à son propre campus
+            if creator.campus and target_campus and target_campus.id != creator.campus.id:
+                raise PermissionDenied(
+                    "Action refusée : Vous ne pouvez créer des comptes que pour votre propre campus d'affectation."
+                )
+
+        serializer.save()
+
+    def perform_update(self, serializer):
+        """Contrôle d'accès strict MVC / RBAC lors de la modification de profil."""
+        from rest_framework.exceptions import PermissionDenied
+        from .permissions import _has_role
+
+        creator = self.request.user
+        target_role = serializer.validated_data.get("role")
+
+        if target_role and not _has_role(creator, "SUPER_SUPER_ADMIN"):
+            if target_role in ("SUPER_SUPER_ADMIN", "SUPER_ADMIN"):
+                raise PermissionDenied(
+                    "Action refusée : Seul le Super Super Admin peut promouvoir un utilisateur au rang de Super Admin."
+                )
+
+        serializer.save()
+
     # ------------------------------------------------------------------
     # Actions personnalisées
     # ------------------------------------------------------------------
