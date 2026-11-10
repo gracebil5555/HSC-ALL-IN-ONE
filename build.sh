@@ -2,15 +2,19 @@
 # Exit on error
 set -o errexit
 
-# Install dependencies
+echo "=== [1/5] Mise à jour de pip ==="
 pip install --upgrade pip
+
+echo "=== [2/5] Installation des dépendances ==="
 pip install -r requirements.txt
 
-# Convert static asset files
+echo "=== [3/5] Application des migrations ==="
+python manage.py migrate --no-input
+
+echo "=== [4/5] Collecte des fichiers statiques ==="
 python manage.py collectstatic --no-input
 
-# Apply any outstanding database migrations
-python manage.py migrate --no-input || true
-
-# Ensure default admin account exists with valid credentials
+echo "=== [5/5] Réinitialisation du compte administrateur ==="
 python manage.py reset_admin_password || true
+
+echo "=== Build terminé avec succès ==="
