@@ -12,17 +12,22 @@ class Command(BaseCommand):
         username = options["username"]
         password = options["password"]
 
-        user, created = User.objects.get_or_create(username=username)
-        user.set_password(password)
-        if username == "roland.elenga":
-            user.role = "SUPER_SUPER_ADMIN"
-            user.is_superuser = True
-            user.is_staff = True
-            user.email = "roland.elenga@hsc-eglise.org"
-        user.save()
+        try:
+            user, created = User.objects.get_or_create(username=username)
+            user.set_password(password)
+            if username == "roland.elenga":
+                user.role = "SUPER_SUPER_ADMIN"
+                user.is_superuser = True
+                user.is_staff = True
+                user.email = "roland.elenga@hsc-eglise.org"
+            user.save()
 
-        action = "Créé" if created else "Mis à jour"
-        self.stdout.write(self.style.SUCCESS(
-            f"[OK] Utilisateur '{username}' {action} avec succès. Mot de passe: '{password}'"
-        ))
+            action = "Créé" if created else "Mis à jour"
+            self.stdout.write(self.style.SUCCESS(
+                f"[OK] Utilisateur '{username}' {action} avec succès. Mot de passe: '{password}'"
+            ))
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(
+                f"[WARN] Impossible de réinitialiser le mot de passe pendant le build: {e}"
+            ))
 
