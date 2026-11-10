@@ -4,23 +4,22 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
+import { useTenant } from "@/context/TenantContext";
 import {
   LayoutDashboard,
   Users,
   GitMerge,
   ShieldAlert,
   Boxes,
-  Package,
   Receipt,
-  BookOpen,
+  UserCheck,
   Briefcase,
+  Church,
   Mic,
   ScanLine,
   ChevronDown,
-  Church,
   X,
-  History,
-  UserCheck,
+  Package,
 } from "lucide-react";
 
 interface MenuItem {
@@ -29,6 +28,10 @@ interface MenuItem {
   icon: React.ReactNode;
   badge?: string;
   subItems?: { name: string; path: string }[];
+  /** Rôles ou profils autorisés (si absent, accessible à tous) */
+  allowedRoles?: string[];
+  /** Filtrage spécifique par mot-clé dans le titre ou fonction */
+  matchProfile?: (userRole: string, title: string, func: string) => boolean;
 }
 
 interface MenuGroup {
@@ -38,6 +41,7 @@ interface MenuGroup {
 
 export const Sidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setHovered, setMobileOpen } = useSidebar();
+  const { currentUser } = useTenant();
   const pathname = usePathname();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
@@ -48,7 +52,44 @@ export const Sidebar: React.FC = () => {
     }));
   };
 
-  const menuGroups: MenuGroup[] = [
+  const userRole = currentUser?.role || "MEMBRE";
+  const userTitle = (currentUser?.title || "").toLowerCase();
+  const userFunc = (currentUser?.ecclesial_function || "").toUpperCase();
+
+  const isSSA = userRole === "SUPER_SUPER_ADMIN";
+  const isSA = userRole === "SUPER_ADMIN";
+  const isPastorOrAbove = isSSA || isSA;
+
+  // Profils opérationnels selon le Dossier d'Architecture HSC
+  const isFinance =
+    isPastorOrAbove ||
+    userTitle.includes("caisse") ||
+    userTitle.includes("financ") ||
+    userTitle.includes("trésor") ||
+    userFunc === "FINANCES";
+
+  const isPatrimoine =
+    isPastorOrAbove ||
+    userTitle.includes("patrimoine") ||
+    userTitle.includes("logist") ||
+    userFunc === "PATRIMOINE";
+
+  const isBerger =
+    isPastorOrAbove ||
+    userRole === "ADJOINT" ||
+    userFunc === "BERGER" ||
+    userTitle.includes("brigade") ||
+    userTitle.includes("gdc") ||
+    userTitle.includes("berger");
+
+  const isDeptLead =
+    isPastorOrAbove ||
+    userRole === "ADMIN_DEPT" ||
+    userFunc === "RESPONSABLE" ||
+    userFunc === "ADJOINT_DEPT";
+
+  // Définition de tous les éléments du menu avec permissions strictes
+  const allMenuGroups: MenuGroup[] = [
     {
       title: "Gouvernance & Fidèles",
       items: [
@@ -56,28 +97,34 @@ export const Sidebar: React.FC = () => {
           name: "Dashboard",
           path: "/dashboard",
           icon: <LayoutDashboard className="w-5 h-5" />,
+          allowedRoles: ["ALL"],
         },
         {
           name: "Membres & Fidèles",
           path: "/members",
           icon: <Users className="w-5 h-5" />,
+          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT"],
         },
         {
           name: "Pipeline d'Assimilation",
           path: "/assimilation",
           icon: <GitMerge className="w-5 h-5" />,
           badge: "Kanban",
+          allowedRoles: ["ALL"],
         },
         {
           name: "Brigades & GDC",
           path: "/brigades",
           icon: <Church className="w-5 h-5" />,
+          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADJOINT", "ADMIN_DEPT"],
+          matchProfile: () => isPastorOrAbove || isBerger,
         },
         {
           name: "Comptes & Accès",
           path: "/users",
           icon: <UserCheck className="w-5 h-5" />,
           badge: "RBAC",
+          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN"], // Strictement réservé aux Super Admins
         },
       ],
     },
@@ -88,18 +135,24 @@ export const Sidebar: React.FC = () => {
           name: "Patrimoine & Actifs",
           path: "/patrimoine/assets",
           icon: <Boxes className="w-5 h-5" />,
+          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT"],
+          matchProfile: () => isPastorOrAbove || isPatrimoine,
         },
         {
           name: "Stocks Consommables",
           path: "/patrimoine/stocks",
           icon: <Package className="w-5 h-5" />,
+          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT"],
+          matchProfile: () => isPastorOrAbove || isPatrimoine,
         },
         {
           name: "Finances & Caisse",
           icon: <Receipt className="w-5 h-5" />,
+          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT"],
+          matchProfile: () => isPastorOrAbove || isFinance || isDeptLead,
           subItems: [
             { name: "Pièces de Caisse", path: "/finances/vouchers" },
-            { name: "Journal Financier", path: "/finances/journal" },
+            ...(isPastorOrAbove || isFinance ? [{ name: "Journal Financier", path: "/finances/journal" }] : []),
           ],
         },
       ],
@@ -111,32 +164,53 @@ export const Sidebar: React.FC = () => {
           name: "Annuaire Économique",
           path: "/directory",
           icon: <Briefcase className="w-5 h-5" />,
+          allowedRoles: ["ALL"], // Accessible à tous les membres pour l'entraide
         },
         {
           name: "Alertes Pastorales",
           path: "/alerts",
           icon: <ShieldAlert className="w-5 h-5" />,
+          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT", "ADJOINT"],
+          matchProfile: () => isPastorOrAbove || isBerger || isDeptLead,
         },
       ],
     },
     {
-      title: "Moteur d'IA (Simulations)",
+      title: "Moteur d'IA (Assistant)",
       items: [
         {
           name: "Voice-to-Action",
           path: "/ai/voice-to-action",
           icon: <Mic className="w-5 h-5" />,
           badge: "Whisper",
+          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADJOINT", "ADMIN_DEPT"],
+          matchProfile: () => isPastorOrAbove || isBerger,
         },
         {
           name: "OCR Émargement",
           path: "/ai/ocr-vision",
           icon: <ScanLine className="w-5 h-5" />,
           badge: "Vision",
+          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT"],
+          matchProfile: () => isPastorOrAbove || isDeptLead,
         },
       ],
     },
   ];
+
+  // Filtrage dynamique des groupes de menu selon le rôle de l'utilisateur connecté
+  const menuGroups = allMenuGroups
+    .map((group) => {
+      const filteredItems = group.items.filter((item) => {
+        if (isSSA) return true; // Le Super Super Admin voit tout
+        if (item.allowedRoles?.includes("ALL")) return true;
+        if (item.matchProfile && item.matchProfile(userRole, userTitle, userFunc)) return true;
+        if (item.allowedRoles && item.allowedRoles.includes(userRole)) return true;
+        return false;
+      });
+      return { ...group, items: filteredItems };
+    })
+    .filter((group) => group.items.length > 0);
 
   const showExpanded = isExpanded || isHovered || isMobileOpen;
 
@@ -199,60 +273,51 @@ export const Sidebar: React.FC = () => {
                 {group.title}
               </h4>
             ) : (
-              <div className="h-4" />
+              <div className="h-4 border-b border-gray-100 dark:border-gray-800 mb-2" />
             )}
 
             <ul className="space-y-1">
               {group.items.map((item, itemIdx) => {
-                const isSubmenu = Boolean(item.subItems && item.subItems.length > 0);
-                const isItemActive = item.path
-                  ? pathname === item.path || (item.path !== "/dashboard" && pathname.startsWith(item.path))
-                  : item.subItems?.some((sub) => pathname === sub.path);
+                const isActive = item.path ? pathname === item.path : false;
+                const hasSubItems = Boolean(item.subItems && item.subItems.length > 0);
+                const isSubmenuOpen = openSubmenus[item.name];
 
-                const submenuKey = `${groupIdx}-${itemIdx}`;
-                const isOpen = openSubmenus[submenuKey] || isItemActive;
-
-                if (isSubmenu) {
+                if (hasSubItems) {
                   return (
                     <li key={itemIdx}>
                       <button
-                        onClick={() => toggleSubmenu(submenuKey)}
-                        className={`flex items-center w-full gap-3 px-3 py-2.5 font-medium rounded-lg text-theme-sm transition-colors ${
-                          isItemActive
-                            ? "bg-brand-50 text-brand-600 dark:bg-brand-500/12 dark:text-brand-400"
-                            : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
-                        } ${!showExpanded ? "justify-center px-0" : ""}`}
+                        onClick={() => toggleSubmenu(item.name)}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+                          isSubmenuOpen
+                            ? "bg-gray-100 dark:bg-white/5 text-gray-900 dark:text-white"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
+                        }`}
                       >
-                        <span className={isItemActive ? "text-brand-500" : "text-gray-500 dark:text-gray-400"}>
-                          {item.icon}
-                        </span>
-
+                        <div className="flex items-center gap-3">
+                          <span className="shrink-0">{item.icon}</span>
+                          {showExpanded && <span>{item.name}</span>}
+                        </div>
                         {showExpanded && (
-                          <>
-                            <span className="flex-1 text-left">{item.name}</span>
-                            <ChevronDown
-                              className={`w-4 h-4 text-gray-400 transition-transform ${
-                                isOpen ? "rotate-180 text-brand-500" : ""
-                              }`}
-                            />
-                          </>
+                          <ChevronDown
+                            className={`w-4 h-4 transition-transform ${
+                              isSubmenuOpen ? "rotate-180" : ""
+                            }`}
+                          />
                         )}
                       </button>
 
-                      {/* Submenu items */}
-                      {showExpanded && isOpen && item.subItems && (
-                        <ul className="mt-1 pl-9 space-y-1">
-                          {item.subItems.map((sub, subIdx) => {
+                      {showExpanded && isSubmenuOpen && (
+                        <ul className="mt-1 pl-9 pr-2 space-y-1">
+                          {item.subItems?.map((sub, subIdx) => {
                             const isSubActive = pathname === sub.path;
                             return (
                               <li key={subIdx}>
                                 <Link
                                   href={sub.path}
-                                  onClick={() => setMobileOpen(false)}
-                                  className={`block px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+                                  className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
                                     isSubActive
-                                      ? "text-brand-600 bg-brand-50/70 font-semibold dark:bg-brand-500/15 dark:text-brand-400"
-                                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5"
+                                      ? "font-semibold text-brand-600 dark:text-brand-400 bg-brand-50/50 dark:bg-brand-500/10"
+                                      : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                                   }`}
                                 >
                                   {sub.name}
@@ -270,26 +335,22 @@ export const Sidebar: React.FC = () => {
                   <li key={itemIdx}>
                     <Link
                       href={item.path || "#"}
-                      onClick={() => setMobileOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2.5 font-medium rounded-lg text-theme-sm transition-colors group ${
-                        isItemActive
-                          ? "bg-brand-50 text-brand-600 dark:bg-brand-500/12 dark:text-brand-400"
-                          : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
-                      } ${!showExpanded ? "justify-center px-0" : ""}`}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-colors relative ${
+                        isActive
+                          ? "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400 font-semibold"
+                          : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
+                      }`}
                     >
-                      <span className={isItemActive ? "text-brand-500" : "text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200"}>
-                        {item.icon}
-                      </span>
-
+                      <span className="shrink-0">{item.icon}</span>
                       {showExpanded && (
-                        <>
-                          <span className="flex-1">{item.name}</span>
+                        <div className="flex-1 flex items-center justify-between">
+                          <span>{item.name}</span>
                           {item.badge && (
-                            <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-full bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
+                            <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300 uppercase">
                               {item.badge}
                             </span>
                           )}
-                        </>
+                        </div>
                       )}
                     </Link>
                   </li>
@@ -300,11 +361,22 @@ export const Sidebar: React.FC = () => {
         ))}
       </div>
 
-      {/* Footer / System Version */}
+      {/* Role Badge Footer */}
       {showExpanded && (
-        <div className="p-4 border-t border-gray-100 dark:border-gray-800 text-center">
-          <p className="text-[11px] text-gray-400">HSC Platform v1.0 · Phase 1</p>
-          <p className="text-[10px] text-gray-400 font-light">Siège Mpita & Multi-Sites</p>
+        <div className="p-4 border-t border-gray-100 dark:border-gray-800">
+          <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400 flex items-center justify-center shrink-0 font-bold text-xs">
+              {currentUser?.first_name?.[0] || "H"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">
+                {currentUser?.first_name} {currentUser?.last_name}
+              </p>
+              <p className="text-[10px] text-gray-400 truncate">
+                {isSSA ? "Supervision Mondiale" : currentUser?.campus_name || "Campus Local"}
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </aside>
