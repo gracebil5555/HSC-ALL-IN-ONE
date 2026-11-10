@@ -22,6 +22,7 @@ import {
   ChevronDown,
   ShieldCheck,
   UserCheck,
+  UserPlus,
   Shield,
   Building2,
 } from "lucide-react";
@@ -97,6 +98,20 @@ export const Header: React.FC = () => {
 
       {/* Right Actions: Theme, Notifications, User */}
       <div className="flex items-center gap-2">
+        {/* Direct Action: Créer / Gérer les Comptes (Admins) */}
+        {isSuperAdmin && (
+          <Link
+            href="/users"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-theme-xs transition-colors shrink-0"
+            title="Gouvernance : Créer des comptes et gérer les rôles"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">
+              {isSuperSuperAdmin ? "+ Nommer / Créer Compte" : "+ Créer un Compte"}
+            </span>
+          </Link>
+        )}
+
         {/* Dark/Light toggle */}
         <button
           onClick={toggleTheme}

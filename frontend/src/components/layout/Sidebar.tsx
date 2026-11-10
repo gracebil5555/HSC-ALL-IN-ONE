@@ -120,10 +120,10 @@ export const Sidebar: React.FC = () => {
           matchProfile: () => isPastorOrAbove || isBerger,
         },
         {
-          name: "Comptes & Accès",
+          name: "Utilisateurs & Admins",
           path: "/users",
           icon: <UserCheck className="w-5 h-5" />,
-          badge: "RBAC",
+          badge: isSSA ? "Super Admins" : "Créer Comptes",
           allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN"], // Strictement réservé aux Super Admins
         },
       ],
