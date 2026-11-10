@@ -5,16 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTenant } from "@/context/TenantContext";
 import { authService } from "@/services/auth.service";
-import { Eye, EyeOff, Lock, Mail, Building2, Sparkles, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, AlertCircle, ShieldCheck, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setCurrentUser, setCurrentCampusId } = useTenant();
+  const { setCurrentUser } = useTenant();
 
   const [email, setEmail] = useState("roland.elenga@hsc-eglise.org");
-  const [password, setPassword] = useState("••••••••••••");
+  const [password, setPassword] = useState("Password123!");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -25,20 +25,26 @@ export default function LoginPage() {
     setErrorMsg("");
     try {
       // Login to get JWT
-      await authService.login(email, password);
+      await authService.login(email.trim(), password);
       // Fetch user profile
       const user = await authService.getCurrentUser();
       setCurrentUser(user);
       
       router.push("/dashboard");
-    } catch (err) {
-      setErrorMsg("Identifiants incorrects. Veuillez réessayer.");
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      const serverMsg = err?.response?.data?.detail || "Identifiants incorrects ou serveur indisponible. Veuillez vérifier vos accès.";
+      setErrorMsg(serverMsg);
     } finally {
       setIsLoading(false);
     }
   };
 
-
+  const selectAccount = (identifiant: string, mdp: string) => {
+    setEmail(identifiant);
+    setPassword(mdp);
+    setErrorMsg("");
+  };
 
   return (
     <div className="mx-auto w-full max-w-md">
@@ -68,6 +74,14 @@ export default function LoginPage() {
         </p>
       </div>
 
+      {/* Message d'erreur visible */}
+      {errorMsg && (
+        <div className="mb-5 p-3.5 rounded-xl bg-error-50 dark:bg-error-500/10 border border-error-200 dark:border-error-500/20 text-error-700 dark:text-error-400 text-xs flex items-center gap-2.5">
+          <AlertCircle className="w-4 h-4 shrink-0 text-error-500" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
       <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
         <div>
           <Label htmlFor="email" required>
@@ -79,7 +93,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             startIcon={<Mail className="w-4 h-4" />}
-            placeholder="nom.prenom@hsc-eglise.org"
+            placeholder="roland.elenga@hsc-eglise.org ou roland.elenga"
             required
           />
         </div>
@@ -94,6 +108,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             startIcon={<Lock className="w-4 h-4" />}
+            placeholder="Entrez votre mot de passe"
             endIcon={
               <button
                 type="button"
@@ -136,7 +151,49 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <div className="mt-8 text-center text-xs text-gray-400">
+      {/* Raccourcis de connexion rapide préconfigurés */}
+      <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-800">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2.5">
+          Comptes de test préconfigurés :
+        </p>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => selectAccount("roland.elenga@hsc-eglise.org", "Password123!")}
+            className="w-full text-left p-2.5 rounded-lg border border-gray-200 dark:border-gray-700/80 hover:border-brand-500 dark:hover:border-brand-500 hover:bg-brand-50/50 dark:hover:bg-brand-500/5 transition-all text-xs flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+              <div>
+                <span className="font-semibold text-gray-800 dark:text-gray-200 block">Apôtre Roland ELENGA</span>
+                <span className="text-[11px] text-gray-400">Super Super Admin · Réseau Global</span>
+              </div>
+            </div>
+            <span className="text-[11px] font-mono text-gray-400 group-hover:text-brand-600 dark:group-hover:text-brand-400">
+              Password123!
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => selectAccount("chancel.niati@hsc-eglise.org", "12345678")}
+            className="w-full text-left p-2.5 rounded-lg border border-gray-200 dark:border-gray-700/80 hover:border-brand-500 dark:hover:border-brand-500 hover:bg-brand-50/50 dark:hover:bg-brand-500/5 transition-all text-xs flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <div>
+                <span className="font-semibold text-gray-800 dark:text-gray-200 block">Pasteur Chancel NIATI</span>
+                <span className="text-[11px] text-gray-400">Super Admin · Mpita (Église Mère)</span>
+              </div>
+            </div>
+            <span className="text-[11px] font-mono text-gray-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+              12345678
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 text-center text-xs text-gray-400">
         <p>Connexion sécurisée par JWT · Multi-Tenancy Row-Level</p>
       </div>
     </div>
