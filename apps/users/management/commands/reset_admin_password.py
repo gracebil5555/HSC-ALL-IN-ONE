@@ -25,3 +25,4 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             f"[OK] Utilisateur '{username}' {action} avec succès. Mot de passe: '{password}'"
         ))
+
