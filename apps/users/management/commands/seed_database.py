@@ -232,3 +232,4 @@ class Command(BaseCommand):
             )
             if created:
                 self.stdout.write(f"  [Créé] Département Mpita : {dept.name}")
+

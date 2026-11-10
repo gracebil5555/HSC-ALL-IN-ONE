@@ -37,12 +37,14 @@ import {
   ExternalLink,
   Receipt,
   UserCheck,
+  UserPlus,
   FolderPlus,
   GitBranch,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Input, Label } from "@/components/ui/Input";
 import { OrganizationalContacts } from "@/components/contacts/OrganizationalContacts";
+import { CreateUserModal } from "@/components/users/CreateUserModal";
 import { campusesService } from "@/services/campuses.service";
 import { departmentsService, DepartmentCatalogItem } from "@/services/departments.service";
 import { usersService } from "@/services/users.service";
@@ -57,23 +59,39 @@ function GlobalNetworkView({
   members,
   vouchers,
   isLoading,
+  onOpenCreateUser,
 }: {
   campuses: any[];
   members: Member[];
   vouchers: CashVoucher[];
   isLoading: boolean;
+  onOpenCreateUser?: () => void;
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* Table: Campus Overview */}
+      {/* Table: Campus Overview & Pasteurs Dirigeants */}
       <div className="lg:col-span-8">
         <ComponentCard
           title="Performance & Effectifs par Campus"
           desc="Répartition multi-sites du Siège Mondial et des extensions HSC"
           action={
-            <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">
-              {campuses.length} sites connectés
-            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={onOpenCreateUser}
+                className="text-xs flex items-center gap-1.5"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                + Nommer un Pasteur
+              </Button>
+              <Link
+                href="/users"
+                className="text-xs font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400"
+              >
+                Gérer les comptes →
+              </Link>
+            </div>
           }
         >
           <TableContainer>
@@ -209,10 +227,12 @@ function CampusAdminView({
   members,
   vouchers,
   isLoading,
+  onOpenCreateUser,
 }: {
   members: Member[];
   vouchers: CashVoucher[];
   isLoading: boolean;
+  onOpenCreateUser?: () => void;
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -331,10 +351,46 @@ function CampusAdminView({
 
         {/* Actions rapides */}
         <Card>
-          <h3 className="font-semibold text-sm text-gray-800 dark:text-white/90 mb-3">
-            Actions Rapides
-          </h3>
+          <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800 mb-3">
+            <h3 className="font-semibold text-sm text-gray-800 dark:text-white/90">
+              Actions Rapides & Gouvernance
+            </h3>
+            {onOpenCreateUser && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={onOpenCreateUser}
+                className="text-xs flex items-center gap-1.5 py-1 px-2.5 h-auto"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                + Créer un Compte
+              </Button>
+            )}
+          </div>
           <div className="grid grid-cols-1 gap-2 text-xs">
+            {onOpenCreateUser && (
+              <button
+                type="button"
+                onClick={onOpenCreateUser}
+                className="p-3 rounded-xl border border-brand-200 dark:border-brand-800/50 bg-brand-50/50 dark:bg-brand-500/10 hover:border-brand-500 flex items-center justify-between transition-colors text-left group"
+              >
+                <span className="font-semibold text-brand-700 dark:text-brand-300 flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                  + Créer un compte serviteur local
+                </span>
+                <ArrowRight className="w-4 h-4 text-brand-500" />
+              </button>
+            )}
+            <Link
+              href="/users"
+              className="p-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-500 flex items-center justify-between transition-colors group"
+            >
+              <span className="font-medium text-gray-700 dark:text-gray-200 group-hover:text-brand-600 flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-gray-400 group-hover:text-brand-500" />
+                Gérer les comptes & adjoints du campus
+              </span>
+              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-brand-500" />
+            </Link>
             {[
               { href: "/members/new", label: "+ Enregistrer un nouveau membre" },
               { href: "/assimilation", label: "Ouvrir le Kanban d'assimilation" },
@@ -585,6 +641,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Modales d'actions de gouvernance (Sections 10 & 11)
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
   const [isExtensionModalOpen, setIsExtensionModalOpen] = useState(false);
   const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
   const [isDeputyModalOpen, setIsDeputyModalOpen] = useState(false);
@@ -802,6 +859,34 @@ export default function DashboardPage() {
 
           {/* Action buttons (spécifiques aux sections 10 & 11) */}
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* Super Super Admin & Super Admin : Bouton direct « + Créer un Compte Responsable / Nommer un Pasteur » */}
+            {(isSuperSuperAdmin || isSuperAdmin) && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setIsCreateUserModalOpen(true)}
+                className="bg-white text-brand-700 hover:bg-white/90 font-bold shadow-md"
+              >
+                <UserPlus className="w-4 h-4 mr-1.5 text-brand-600" />
+                {isSuperSuperAdmin
+                  ? "+ Nommer un Pasteur / Créer un Compte"
+                  : "+ Créer un Compte Responsable"}
+              </Button>
+            )}
+
+            {(isSuperSuperAdmin || isSuperAdmin) && (
+              <Link href="/users">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white/10 text-white hover:bg-white/20 border border-white/20"
+                >
+                  <UserCheck className="w-4 h-4 mr-1.5" />
+                  Gérer les Comptes & Rôles
+                </Button>
+              </Link>
+            )}
+
             {/* Super Super Admin : Bouton « + Créer une extension » (Section 10) */}
             {isSuperSuperAdmin && (
               <Button
@@ -937,12 +1022,14 @@ export default function DashboardPage() {
               members={members}
               vouchers={vouchers}
               isLoading={isLoading}
+              onOpenCreateUser={() => setIsCreateUserModalOpen(true)}
             />
           ) : isSuperAdmin ? (
             <CampusAdminView
               members={members}
               vouchers={vouchers}
               isLoading={isLoading}
+              onOpenCreateUser={() => setIsCreateUserModalOpen(true)}
             />
           ) : isAdminDept ? (
             <DeptAdminView
@@ -1246,6 +1333,13 @@ export default function DashboardPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Modal Création de Compte & Nomination selon Matrice RBAC */}
+      <CreateUserModal
+        isOpen={isCreateUserModalOpen}
+        onClose={() => setIsCreateUserModalOpen(false)}
+        onSuccess={loadDashboardData}
+      />
     </div>
   );
 }

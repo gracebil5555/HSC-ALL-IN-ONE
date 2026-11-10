@@ -81,6 +81,20 @@ const INITIAL_ALERTS: PastoralAlert[] = [
   },
 ];
 
+const isCampusMatch = (itemCampusId: string, selectedCampusId: string) => {
+  if (selectedCampusId === "all") return true;
+  if (itemCampusId === selectedCampusId) return true;
+  const aliasMap: Record<string, string[]> = {
+    "1": ["campus-mpita-hq", "mpita", "1"],
+    "2": ["campus-mpaka", "campus-paka", "mpaka", "2"],
+    "3": ["campus-ngoyo", "ngoyo", "3"],
+    "4": ["campus-moungali", "moungali", "4"],
+    "5": ["campus-canada", "canada", "5"],
+  };
+  const validAliases = aliasMap[selectedCampusId] || [];
+  return validAliases.includes(itemCampusId);
+};
+
 export default function AlertsPage() {
   const { currentCampusId, currentUser } = useTenant();
   const [alerts, setAlerts] = useState<PastoralAlert[]>(INITIAL_ALERTS);
@@ -95,8 +109,7 @@ export default function AlertsPage() {
   const [newDesc, setNewDesc] = useState("");
 
   const filtered = alerts.filter((a) => {
-    const matchesCampus =
-      currentCampusId === "all" ? true : a.campus_id === currentCampusId;
+    const matchesCampus = isCampusMatch(a.campus_id, currentCampusId);
     const matchesStatus =
       statusFilter === "all" ? true : a.status === statusFilter;
     return matchesCampus && matchesStatus;

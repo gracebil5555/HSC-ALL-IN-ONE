@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # Script de build Render : uniquement dÃ©pendances et fichiers statiques (aucun accÃ¨s DB)
 set -o errexit
 

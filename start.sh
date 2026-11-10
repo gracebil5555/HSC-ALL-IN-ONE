@@ -10,3 +10,4 @@ python manage.py seed_database || echo "[WARN] Seed ignoré (peut-être déjà f
 
 echo "=== [START] Démarrage de Gunicorn ==="
 exec gunicorn config.wsgi:application --bind "0.0.0.0:${PORT:-10000}" --workers 2 --timeout 120
+
