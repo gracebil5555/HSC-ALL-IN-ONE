@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
 import { useTenant } from "@/context/TenantContext";
+import { useRole } from "@/hooks/useRole";
 import {
   LayoutDashboard,
   Users,
@@ -20,6 +21,7 @@ import {
   ChevronDown,
   X,
   Package,
+  Layers,
 } from "lucide-react";
 
 interface MenuItem {
@@ -28,10 +30,7 @@ interface MenuItem {
   icon: React.ReactNode;
   badge?: string;
   subItems?: { name: string; path: string }[];
-  /** Rôles ou profils autorisés (si absent, accessible à tous) */
-  allowedRoles?: string[];
-  /** Filtrage spécifique par mot-clé dans le titre ou fonction */
-  matchProfile?: (userRole: string, title: string, func: string) => boolean;
+  visible?: boolean;
 }
 
 interface MenuGroup {
@@ -42,6 +41,21 @@ interface MenuGroup {
 export const Sidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setHovered, setMobileOpen } = useSidebar();
   const { currentUser } = useTenant();
+  const {
+    isSuperSuperAdmin,
+    isSuperAdminOrAbove,
+    isAdminDept,
+    canViewMembers,
+    canViewBrigades,
+    canViewFinances,
+    canViewPatrimoine,
+    canViewAlerts,
+    isFinanceDept,
+    isPatrimoineDept,
+    isChoraleDept,
+    isAccueilSocialSecDept,
+    isBrigadeDept,
+  } = useRole();
   const pathname = usePathname();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
@@ -52,43 +66,9 @@ export const Sidebar: React.FC = () => {
     }));
   };
 
-  const userRole = currentUser?.role || "MEMBRE";
-  const userTitle = (currentUser?.title || "").toLowerCase();
-  const userFunc = (currentUser?.ecclesial_function || "").toUpperCase();
+  const isSSA = isSuperSuperAdmin;
 
-  const isSSA = userRole === "SUPER_SUPER_ADMIN";
-  const isSA = userRole === "SUPER_ADMIN";
-  const isPastorOrAbove = isSSA || isSA;
-
-  // Profils opérationnels selon le Dossier d'Architecture HSC
-  const isFinance =
-    isPastorOrAbove ||
-    userTitle.includes("caisse") ||
-    userTitle.includes("financ") ||
-    userTitle.includes("trésor") ||
-    userFunc === "FINANCES";
-
-  const isPatrimoine =
-    isPastorOrAbove ||
-    userTitle.includes("patrimoine") ||
-    userTitle.includes("logist") ||
-    userFunc === "PATRIMOINE";
-
-  const isBerger =
-    isPastorOrAbove ||
-    userRole === "ADJOINT" ||
-    userFunc === "BERGER" ||
-    userTitle.includes("brigade") ||
-    userTitle.includes("gdc") ||
-    userTitle.includes("berger");
-
-  const isDeptLead =
-    isPastorOrAbove ||
-    userRole === "ADMIN_DEPT" ||
-    userFunc === "RESPONSABLE" ||
-    userFunc === "ADJOINT_DEPT";
-
-  // Définition de tous les éléments du menu avec permissions strictes
+  // Définition des menus strictement adaptés au rôle et au département (Sections 9, 15, 20)
   const allMenuGroups: MenuGroup[] = [
     {
       title: "Gouvernance & Fidèles",
@@ -97,34 +77,40 @@ export const Sidebar: React.FC = () => {
           name: "Dashboard",
           path: "/dashboard",
           icon: <LayoutDashboard className="w-5 h-5" />,
-          allowedRoles: ["ALL"],
+          visible: true,
+        },
+        {
+          name: "Départements & Structures",
+          path: "/departments",
+          icon: <Layers className="w-5 h-5" />,
+          badge: isSSA ? "Catalogue" : "Église",
+          visible: isSuperAdminOrAbove || isAdminDept,
         },
         {
           name: "Membres & Fidèles",
           path: "/members",
           icon: <Users className="w-5 h-5" />,
-          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT"],
+          visible: canViewMembers,
         },
         {
           name: "Pipeline d'Assimilation",
           path: "/assimilation",
           icon: <GitMerge className="w-5 h-5" />,
           badge: "Kanban",
-          allowedRoles: ["ALL"],
+          visible: isSuperAdminOrAbove || isAccueilSocialSecDept || isChoraleDept || isBrigadeDept,
         },
         {
           name: "Brigades & GDC",
           path: "/brigades",
           icon: <Church className="w-5 h-5" />,
-          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADJOINT", "ADMIN_DEPT"],
-          matchProfile: () => isPastorOrAbove || isBerger,
+          visible: canViewBrigades,
         },
         {
-          name: "Utilisateurs & Admins",
+          name: "Utilisateurs & Rôles",
           path: "/users",
           icon: <UserCheck className="w-5 h-5" />,
-          badge: isSSA ? "Super Admins" : "Créer Comptes",
-          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN"], // Strictement réservé aux Super Admins
+          badge: isSSA ? "Réseau" : "Adjoints",
+          visible: isSuperAdminOrAbove || isAdminDept,
         },
       ],
     },
@@ -135,24 +121,21 @@ export const Sidebar: React.FC = () => {
           name: "Patrimoine & Actifs",
           path: "/patrimoine/assets",
           icon: <Boxes className="w-5 h-5" />,
-          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT"],
-          matchProfile: () => isPastorOrAbove || isPatrimoine,
+          visible: canViewPatrimoine,
         },
         {
           name: "Stocks Consommables",
           path: "/patrimoine/stocks",
           icon: <Package className="w-5 h-5" />,
-          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT"],
-          matchProfile: () => isPastorOrAbove || isPatrimoine,
+          visible: canViewPatrimoine,
         },
         {
           name: "Finances & Caisse",
           icon: <Receipt className="w-5 h-5" />,
-          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT"],
-          matchProfile: () => isPastorOrAbove || isFinance || isDeptLead,
+          visible: canViewFinances,
           subItems: [
             { name: "Pièces de Caisse", path: "/finances/vouchers" },
-            ...(isPastorOrAbove || isFinance ? [{ name: "Journal Financier", path: "/finances/journal" }] : []),
+            { name: "Journal Financier", path: "/finances/journal" },
           ],
         },
       ],
@@ -164,14 +147,13 @@ export const Sidebar: React.FC = () => {
           name: "Annuaire Économique",
           path: "/directory",
           icon: <Briefcase className="w-5 h-5" />,
-          allowedRoles: ["ALL"], // Accessible à tous les membres pour l'entraide
+          visible: true,
         },
         {
           name: "Alertes Pastorales",
           path: "/alerts",
           icon: <ShieldAlert className="w-5 h-5" />,
-          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT", "ADJOINT"],
-          matchProfile: () => isPastorOrAbove || isBerger || isDeptLead,
+          visible: canViewAlerts,
         },
       ],
     },
@@ -183,33 +165,25 @@ export const Sidebar: React.FC = () => {
           path: "/ai/voice-to-action",
           icon: <Mic className="w-5 h-5" />,
           badge: "Whisper",
-          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADJOINT", "ADMIN_DEPT"],
-          matchProfile: () => isPastorOrAbove || isBerger,
+          visible: isSuperAdminOrAbove || isBrigadeDept,
         },
         {
           name: "OCR Émargement",
           path: "/ai/ocr-vision",
           icon: <ScanLine className="w-5 h-5" />,
           badge: "Vision",
-          allowedRoles: ["SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT"],
-          matchProfile: () => isPastorOrAbove || isDeptLead,
+          visible: isSuperAdminOrAbove || (isAdminDept && !isFinanceDept && !isPatrimoineDept),
         },
       ],
     },
   ];
 
-  // Filtrage dynamique des groupes de menu selon le rôle de l'utilisateur connecté
+  // Filtrage dynamique des groupes de menu selon le rôle et le département
   const menuGroups = allMenuGroups
-    .map((group) => {
-      const filteredItems = group.items.filter((item) => {
-        if (isSSA) return true; // Le Super Super Admin voit tout
-        if (item.allowedRoles?.includes("ALL")) return true;
-        if (item.matchProfile && item.matchProfile(userRole, userTitle, userFunc)) return true;
-        if (item.allowedRoles && item.allowedRoles.includes(userRole)) return true;
-        return false;
-      });
-      return { ...group, items: filteredItems };
-    })
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.visible !== false),
+    }))
     .filter((group) => group.items.length > 0);
 
   const showExpanded = isExpanded || isHovered || isMobileOpen;

@@ -35,7 +35,7 @@ pastor_chancel.email = "chancel.niati@hsc-eglise.org"
 pastor_chancel.title = "Pasteur"
 pastor_chancel.ecclesial_function = "PASTEUR"
 pastor_chancel.role = "SUPER_ADMIN"
-pastor_chancel.set_password("12345678")
+pastor_chancel.set_password("Password123!")
 pastor_chancel.save()
 
 mpita_hq, _ = Campus.objects.get_or_create(
@@ -66,7 +66,7 @@ pastor_kelly.email = "kelly.makosso@hsc-eglise.org"
 pastor_kelly.title = "Pasteur"
 pastor_kelly.ecclesial_function = "PASTEUR"
 pastor_kelly.role = "SUPER_ADMIN"
-pastor_kelly.set_password("12345678")
+pastor_kelly.set_password("Password123!")
 pastor_kelly.save()
 
 mpaka_ext, _ = Campus.objects.get_or_create(
@@ -96,7 +96,7 @@ pastor_blanchard.email = "blanchard.ngoy@hsc-eglise.org"
 pastor_blanchard.title = "Pasteur"
 pastor_blanchard.ecclesial_function = "PASTEUR"
 pastor_blanchard.role = "SUPER_ADMIN"
-pastor_blanchard.set_password("12345678")
+pastor_blanchard.set_password("Password123!")
 pastor_blanchard.save()
 
 ngoyo_ext, _ = Campus.objects.get_or_create(
@@ -126,7 +126,7 @@ berger_antony.email = "antony.missamou@hsc-eglise.org"
 berger_antony.title = "Berger"
 berger_antony.ecclesial_function = "BERGER"
 berger_antony.role = "SUPER_ADMIN"
-berger_antony.set_password("12345678")
+berger_antony.set_password("Password123!")
 berger_antony.save()
 
 moungali_ext, _ = Campus.objects.get_or_create(
@@ -158,7 +158,7 @@ pastor_stevi.email = "stevi.dibala@hsc-eglise.org"
 pastor_stevi.title = "Pasteur"
 pastor_stevi.ecclesial_function = "PASTEUR"
 pastor_stevi.role = "SUPER_ADMIN"
-pastor_stevi.set_password("12345678")
+pastor_stevi.set_password("Password123!")
 pastor_stevi.save()
 
 canada_ext, _ = Campus.objects.get_or_create(

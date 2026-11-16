@@ -13,6 +13,9 @@ class BrigadeSerializer(serializers.ModelSerializer):
 
 class MemberSerializer(serializers.ModelSerializer):
     brigade_name = serializers.CharField(source='brigade.name', read_only=True)
+    department_name = serializers.CharField(source='department.name', read_only=True)
+    campus_name = serializers.CharField(source='campus.name', read_only=True)
+    ecclesial_function_display = serializers.CharField(source='get_ecclesial_function_display', read_only=True)
 
     class Meta:
         model = Member

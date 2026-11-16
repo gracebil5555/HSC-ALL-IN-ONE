@@ -66,8 +66,15 @@ const ECCLESIAL_FUNCTIONS: { value: EcclesialFunction; label: string }[] = [
 ];
 
 export default function UsersManagementPage() {
-  const { currentCampusId, currentCampus, campuses } = useTenant();
-  const { isSuperSuperAdmin, isSuperAdmin } = useRole();
+  const { currentCampusId, currentCampus, campuses, currentUser } = useTenant();
+  const {
+    isSuperSuperAdmin,
+    isSuperAdmin,
+    isSuperAdminOrAbove,
+    isAdminDept,
+    canManageUsers,
+    canAssignDeputy,
+  } = useRole();
 
   // Hiérarchie MVC / RBAC stricte :
   // - Seul le Super Super Admin peut nommer un Super Admin (Pasteur d'extension / église)
@@ -199,8 +206,8 @@ export default function UsersManagementPage() {
     );
   };
 
-  // Contrôle d'accès strict MVC / RBAC (Architecture HSC)
-  if (!isLoading && !isSuperSuperAdmin && !isSuperAdmin) {
+  // Contrôle d'accès strict MVC / RBAC (Architecture HSC : SSA, SA et Admin Dept pour la gestion de son adjoint)
+  if (!isLoading && !isSuperSuperAdmin && !isSuperAdmin && !isAdminDept) {
     return (
       <div className="p-8 max-w-2xl mx-auto text-center space-y-4 py-16">
         <div className="w-16 h-16 rounded-2xl bg-warning-50 dark:bg-warning-500/10 text-warning-600 flex items-center justify-center mx-auto">
@@ -228,26 +235,33 @@ export default function UsersManagementPage() {
         description="Gestion hiérarchique des utilisateurs, des rôles techniques RBAC et du système de délégation d'adjoints."
         action={
           <div className="flex items-center gap-2.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const titulaire = users.find((u) => u.role === "SUPER_ADMIN" || u.role === "SUPER_SUPER_ADMIN") || users[0];
-                setSelectedTitulaire(titulaire);
-                setIsDeputyModalOpen(true);
-              }}
-            >
-              <UserCheck className="w-4 h-4 mr-1.5 text-brand-600" />
-              + Assigner un Adjoint
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setIsCreateModalOpen(true)}
-            >
-              <UserPlus className="w-4 h-4 mr-1.5" />
-              + Nouvel Utilisateur
-            </Button>
+            {canAssignDeputy && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const titulaire =
+                    users.find((u) => String(u.id) === String(currentUser?.id)) ||
+                    users.find((u) => u.role === "SUPER_ADMIN" || u.role === "SUPER_SUPER_ADMIN") ||
+                    users[0];
+                  setSelectedTitulaire(titulaire);
+                  setIsDeputyModalOpen(true);
+                }}
+              >
+                <UserCheck className="w-4 h-4 mr-1.5 text-brand-600" />
+                + Ajouter un adjoint
+              </Button>
+            )}
+            {canManageUsers && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setIsCreateModalOpen(true)}
+              >
+                <UserPlus className="w-4 h-4 mr-1.5" />
+                + Nouvel Utilisateur
+              </Button>
+            )}
           </div>
         }
       />

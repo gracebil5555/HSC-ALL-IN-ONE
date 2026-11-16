@@ -47,22 +47,33 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // If the user has a specific local campus bound, lock to that campus unless super_super_admin
-    if (currentUser && currentUser.role !== "SUPER_SUPER_ADMIN" && currentUser.campus_id) {
-      setCurrentCampusIdState(currentUser.campus_id);
+    if (!currentUser) return;
+    const effRole =
+      currentUser.effective_role ||
+      (currentUser.is_deputy && currentUser.deputy_of_role
+        ? currentUser.deputy_of_role
+        : currentUser.role);
+
+    // Seul le Super Super Admin (ou son adjoint global) peut rester en vue "all"
+    if (effRole !== "SUPER_SUPER_ADMIN" && currentUser.campus_id) {
+      setCurrentCampusIdState(String(currentUser.campus_id));
+    } else if (effRole === "SUPER_SUPER_ADMIN") {
+      setCurrentCampusIdState("all");
     }
   }, [currentUser]);
 
   const setCurrentCampusId = (id: string) => {
-    setCurrentCampusIdState(id);
+    const strId = String(id);
+    setCurrentCampusIdState(strId);
     if (typeof window !== "undefined") {
-      localStorage.setItem("hsc-active-campus", id);
+      localStorage.setItem("hsc-active-campus", strId);
     }
   };
 
-  const currentCampus = currentCampusId === "all"
-    ? null
-    : campuses.find((c) => c.id === currentCampusId) || null;
+  const currentCampus =
+    currentCampusId === "all"
+      ? null
+      : campuses.find((c) => String(c.id) === String(currentCampusId)) || null;
 
   const isGlobalScope = currentCampusId === "all";
 

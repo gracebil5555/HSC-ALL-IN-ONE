@@ -1,29 +1,48 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTenant } from "@/context/TenantContext";
+import { useRole } from "@/hooks/useRole";
 import { membersService } from "@/services/members.service";
+import { departmentsService, DepartmentItem } from "@/services/departments.service";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ComponentCard } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Textarea, Select } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
-import { ArrowLeft, Check, Save } from "lucide-react";
+import { ArrowLeft, Save, Lock } from "lucide-react";
+
+const ECCLESIAL_FUNCTION_OPTIONS = [
+  { value: "MEMBRE", label: "Membre / Fidèle" },
+  { value: "OUVRIER", label: "Ouvrier / Serviteur" },
+  { value: "ADJOINT_DEPT", label: "Adjoint de Département" },
+  { value: "RESPONSABLE_DEPT", label: "Responsable de Département" },
+  { value: "BERGER", label: "Berger" },
+  { value: "DIACRE", label: "Diacre / Diaconesse" },
+  { value: "ANCIEN", label: "Ancien" },
+  { value: "EVANGELISTE", label: "Évangéliste" },
+  { value: "PASTEUR", label: "Pasteur" },
+];
 
 export default function NewMemberPage() {
   const router = useRouter();
-  const { campuses, currentCampusId } = useTenant();
+  const { campuses, currentCampusId, currentUser } = useTenant();
+  const { isSuperSuperAdmin } = useRole();
+
+  const defaultCampusId =
+    currentCampusId !== "all" && currentCampusId
+      ? String(currentCampusId)
+      : String(currentUser?.campus_id || campuses[0]?.id || "1");
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [residentialArea, setResidentialArea] = useState("");
-  const [campusId, setCampusId] = useState(
-    currentCampusId === "all" ? "campus-mpita-hq" : currentCampusId
-  );
+  const [campusId, setCampusId] = useState(defaultCampusId);
+  const [ecclesialFunction, setEcclesialFunction] = useState("MEMBRE");
   const [brigadeId, setBrigadeId] = useState<string>("");
   const [departmentId, setDepartmentId] = useState<string>("");
   const [stage, setStage] = useState<any>("ACCUEIL");
@@ -32,9 +51,32 @@ export default function NewMemberPage() {
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  const [brigadesList, setBrigadesList] = useState<any[]>([]);
+  const [departmentsList, setDepartmentsList] = useState<DepartmentItem[]>([]);
+
+  useEffect(() => {
+    if (!isSuperSuperAdmin && currentUser?.campus_id) {
+      setCampusId(String(currentUser.campus_id));
+    } else if (currentCampusId !== "all" && currentCampusId) {
+      setCampusId(String(currentCampusId));
+    } else if (campuses.length > 0 && !campusId) {
+      setCampusId(String(campuses[0].id));
+    }
+  }, [currentUser, currentCampusId, campuses, isSuperSuperAdmin]);
+
+  useEffect(() => {
+    if (!campusId) return;
+    membersService.getBrigades(campusId).then(setBrigadesList);
+    departmentsService.getDepartments(campusId).then(setDepartmentsList);
+  }, [campusId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+
+    const lockedCampusId = !isSuperSuperAdmin && currentUser?.campus_id
+      ? String(currentUser.campus_id)
+      : campusId;
 
     await membersService.createMember({
       first_name: firstName,
@@ -42,21 +84,10 @@ export default function NewMemberPage() {
       phone,
       whatsapp: whatsapp || phone,
       residential_area: residentialArea,
-      campus_id: campusId,
+      campus_id: lockedCampusId,
+      ecclesial_function: ecclesialFunction,
       brigade_id: brigadeId ? brigadeId : null,
-      brigade_name:
-        brigadeId === "brg-01"
-          ? "Brigade David (Adultes)"
-          : brigadeId === "brg-02"
-          ? "GDC Jeunesse Samuel"
-          : undefined,
       department_id: departmentId || null,
-      department_name:
-        departmentId === "dpt-01"
-          ? "Chantres & Louange"
-          : departmentId === "dpt-02"
-          ? "Médias & Sono"
-          : undefined,
       assimilation_stage: stage,
       assimilation_progress: stage === "ACCUEIL" ? "0/4" : "1/4",
       is_baptized: isBaptized,
@@ -150,20 +181,44 @@ export default function NewMemberPage() {
           </div>
         </ComponentCard>
 
-        <ComponentCard title="Rattachement Ecclésial & Structure">
+        <ComponentCard title="Rattachement Ecclésial & Structure (Sections 8, 16 & 25)">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="campus" required>
-                Campus de rattachement
+                Église / Campus de rattachement
               </Label>
               <Select
                 id="campus"
                 value={campusId}
+                disabled={!isSuperSuperAdmin}
                 onChange={(e) => setCampusId(e.target.value)}
               >
                 {campuses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.city})
+                  </option>
+                ))}
+              </Select>
+              {!isSuperSuperAdmin && (
+                <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  Verrouillé sur le périmètre de votre Église
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="ecclesialFunction" required>
+                Fonction / Position Ecclésiale (Section 25)
+              </Label>
+              <Select
+                id="ecclesialFunction"
+                value={ecclesialFunction}
+                onChange={(e) => setEcclesialFunction(e.target.value)}
+              >
+                {ECCLESIAL_FUNCTION_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
                   </option>
                 ))}
               </Select>
@@ -179,24 +234,27 @@ export default function NewMemberPage() {
                 onChange={(e) => setBrigadeId(e.target.value)}
               >
                 <option value="">Non affecté (Optionnelle)</option>
-                <option value="brg-01">Brigade David (Adultes)</option>
-                <option value="brg-02">GDC Jeunesse Samuel</option>
-                <option value="brg-03">Brigade Salomon (Entrepreneurs)</option>
+                {brigadesList.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="department">Département de Service</Label>
+              <Label htmlFor="department">Département de Service (Dynamique)</Label>
               <Select
                 id="department"
                 value={departmentId}
                 onChange={(e) => setDepartmentId(e.target.value)}
               >
                 <option value="">Aucun département pour l'instant</option>
-                <option value="dpt-01">Chantres & Louange</option>
-                <option value="dpt-02">Médias & Sono</option>
-                <option value="dpt-03">Protocole & Accueil</option>
-                <option value="dpt-04">Intercession</option>
+                {departmentsList.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
               </Select>
             </div>
 

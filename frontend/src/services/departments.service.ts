@@ -58,6 +58,7 @@ export const departmentsService = {
     admin?: number | null;
     deputy?: number | null;
     catalog_item?: number | null;
+    is_active?: boolean;
   }): Promise<DepartmentItem> {
     try {
       const response = await apiClient.post<DepartmentItem>("/departments/", payload);
@@ -66,5 +67,35 @@ export const departmentsService = {
       console.error("Erreur lors de la création du département:", error);
       throw error;
     }
+  },
+
+  async updateDepartment(
+    id: number,
+    payload: Partial<{
+      name: string;
+      code: string;
+      description: string;
+      admin: number | null;
+      deputy: number | null;
+      is_active: boolean;
+    }>
+  ): Promise<DepartmentItem> {
+    const response = await apiClient.patch<DepartmentItem>(`/departments/${id}/`, payload);
+    return response.data;
+  },
+
+  async deleteDepartment(id: number): Promise<void> {
+    await apiClient.delete(`/departments/${id}/`);
+  },
+
+  async createCatalogItem(payload: {
+    name: string;
+    code: string;
+    description?: string;
+    icon?: string;
+    is_default?: boolean;
+  }): Promise<DepartmentCatalogItem> {
+    const response = await apiClient.post<DepartmentCatalogItem>("/departments/catalog/", payload);
+    return response.data;
   },
 };

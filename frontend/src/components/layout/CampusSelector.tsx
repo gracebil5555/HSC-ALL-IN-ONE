@@ -20,7 +20,12 @@ export const CampusSelector: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const canSwitchCampus = currentUser?.role === "SUPER_SUPER_ADMIN";
+  const effRole =
+    currentUser?.effective_role ||
+    (currentUser?.is_deputy && currentUser?.deputy_of_role
+      ? currentUser.deputy_of_role
+      : currentUser?.role);
+  const canSwitchCampus = effRole === "SUPER_SUPER_ADMIN";
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -87,12 +92,12 @@ export const CampusSelector: React.FC = () => {
           {/* List of Individual Campuses */}
           <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-1">
             {campuses.map((campus) => {
-              const isSelected = currentCampusId === campus.id;
+              const isSelected = String(currentCampusId) === String(campus.id);
               return (
                 <button
                   key={campus.id}
                   onClick={() => {
-                    setCurrentCampusId(campus.id);
+                    setCurrentCampusId(String(campus.id));
                     setIsOpen(false);
                   }}
                   className={`flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs transition-colors text-left ${

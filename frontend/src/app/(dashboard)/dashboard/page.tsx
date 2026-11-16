@@ -60,12 +60,14 @@ function GlobalNetworkView({
   vouchers,
   isLoading,
   onOpenCreateUser,
+  onSelectCampus,
 }: {
   campuses: any[];
   members: Member[];
   vouchers: CashVoucher[];
   isLoading: boolean;
   onOpenCreateUser?: () => void;
+  onSelectCampus?: (campusId: string) => void;
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -73,7 +75,7 @@ function GlobalNetworkView({
       <div className="lg:col-span-8">
         <ComponentCard
           title="Performance & Effectifs par Campus"
-          desc="Répartition multi-sites du Siège Mondial et des extensions HSC"
+          desc="Cliquez sur une Église ou extension pour inspecter son périmètre"
           action={
             <div className="flex items-center gap-2">
               <Button
@@ -103,7 +105,11 @@ function GlobalNetworkView({
             </TableHead>
             <TableBody>
               {campuses.map((c) => (
-                <TableRow key={c.id}>
+                <TableRow
+                  key={c.id}
+                  onClick={() => onSelectCampus && onSelectCampus(String(c.id))}
+                  className="cursor-pointer hover:bg-brand-50/40 dark:hover:bg-white/5 transition-colors"
+                >
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400 flex items-center justify-center font-bold text-xs">
@@ -416,23 +422,230 @@ function CampusAdminView({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sub-view: Department Admin  (ADMIN_DEPT)
+// Sub-view: Department Admin Mini-Dashboards (Section 9 & 20)
 // ─────────────────────────────────────────────────────────────────────────────
 function DeptAdminView({
   members,
+  vouchers,
   isLoading,
   currentUser,
+  isFinanceDept,
+  isPatrimoineDept,
+  isChoraleDept,
+  onOpenDeputyModal,
 }: {
   members: Member[];
+  vouchers: CashVoucher[];
   isLoading: boolean;
   currentUser: any;
+  isFinanceDept: boolean;
+  isPatrimoineDept: boolean;
+  isChoraleDept: boolean;
+  onOpenDeputyModal?: () => void;
 }) {
+  // 1. Mini-Dashboard Financier (Section 9 : Admin Finance)
+  if (isFinanceDept) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8">
+          <ComponentCard
+            title="Mini-Dashboard Financier · Pièces de Caisse"
+            desc="Pilotage de la trésorerie et suivi des décaissements de l'Église (Section 9 & 12)"
+            action={
+              <Link href="/finances/vouchers">
+                <Button variant="default" size="sm">
+                  <Receipt className="w-4 h-4 mr-1.5" />
+                  Ouvrir la Caisse
+                </Button>
+              </Link>
+            }
+          >
+            <TableContainer>
+              <TableHead>
+                <TableHeaderCell>N° Pièce</TableHeaderCell>
+                <TableHeaderCell>Bénéficiaire & Motif</TableHeaderCell>
+                <TableHeaderCell>Montant</TableHeaderCell>
+                <TableHeaderCell>Statut</TableHeaderCell>
+              </TableHead>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-4 text-gray-500">
+                      Chargement…
+                    </TableCell>
+                  </TableRow>
+                ) : vouchers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-4 text-gray-500">
+                      Aucune pièce de caisse enregistrée
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  vouchers.slice(0, 8).map((v) => (
+                    <TableRow key={v.id}>
+                      <TableCell>
+                        <span className="font-mono text-xs font-bold">{v.voucher_number}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs font-semibold block">{v.beneficiary}</span>
+                        <span className="text-[11px] text-gray-400">{v.purpose}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs font-bold">
+                          {Number(v.amount).toLocaleString("fr-FR")} FCFA
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="light"
+                          color={
+                            v.status === "DISBURSED"
+                              ? "success"
+                              : v.status === "APPROVED"
+                              ? "info"
+                              : "warning"
+                          }
+                          size="sm"
+                        >
+                          {v.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </TableContainer>
+          </ComponentCard>
+        </div>
+
+        <div className="lg:col-span-4 space-y-6">
+          <Card>
+            <h3 className="font-semibold text-sm text-gray-800 dark:text-white/90 mb-3">
+              Actions Département Finances
+            </h3>
+            <div className="grid grid-cols-1 gap-2 text-xs">
+              <Link
+                href="/finances/vouchers"
+                className="p-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-500 flex items-center justify-between transition-colors"
+              >
+                <span className="font-medium">Gérer les Pièces de Caisse</span>
+                <ArrowRight className="w-4 h-4 text-gray-400" />
+              </Link>
+              <Link
+                href="/finances/journal"
+                className="p-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-500 flex items-center justify-between transition-colors"
+              >
+                <span className="font-medium">Consulter le Journal Financier</span>
+                <ArrowRight className="w-4 h-4 text-gray-400" />
+              </Link>
+              {onOpenDeputyModal && !currentUser?.is_deputy && (
+                <button
+                  type="button"
+                  onClick={onOpenDeputyModal}
+                  className="p-3 rounded-xl border border-brand-200 bg-brand-50/40 dark:border-brand-800 dark:bg-brand-500/10 flex items-center justify-between text-brand-700 dark:text-brand-300 font-semibold"
+                >
+                  <span>+ Ajouter / Gérer mon Adjoint</span>
+                  <UserCheck className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Mini-Dashboard Patrimonial (Section 9 : Admin Patrimoine)
+  if (isPatrimoineDept) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8">
+          <ComponentCard
+            title="Mini-Dashboard Patrimoine & Logistique"
+            desc="Suivi des immobilisations, état des biens, amortissements et stocks consommables (Section 9 & 13)"
+            action={
+              <Link href="/patrimoine/assets">
+                <Button variant="default" size="sm">
+                  Ouvrir le Registre des Biens
+                </Button>
+              </Link>
+            }
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
+              <Link
+                href="/patrimoine/assets"
+                className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-500 transition-all"
+              >
+                <h4 className="font-bold text-sm text-gray-900 dark:text-white mb-1">
+                  Inventaire & Immobilisations
+                </h4>
+                <p className="text-xs text-gray-500">
+                  Valeur d'acquisition, état des équipements, localisation et étiquettes QR Code.
+                </p>
+              </Link>
+              <Link
+                href="/patrimoine/stocks"
+                className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-500 transition-all"
+              >
+                <h4 className="font-bold text-sm text-gray-900 dark:text-white mb-1">
+                  Stocks Consommables & Mouvements
+                </h4>
+                <p className="text-xs text-gray-500">
+                  Entrées, sorties pour culte et seuils d'alerte de réapprovisionnement.
+                </p>
+              </Link>
+            </div>
+          </ComponentCard>
+        </div>
+
+        <div className="lg:col-span-4 space-y-6">
+          <Card>
+            <h3 className="font-semibold text-sm text-gray-800 dark:text-white/90 mb-3">
+              Actions Département Patrimoine
+            </h3>
+            <div className="grid grid-cols-1 gap-2 text-xs">
+              <Link
+                href="/patrimoine/assets"
+                className="p-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-500 flex items-center justify-between"
+              >
+                <span className="font-medium">Registre du Patrimoine</span>
+                <ArrowRight className="w-4 h-4 text-gray-400" />
+              </Link>
+              <Link
+                href="/patrimoine/stocks"
+                className="p-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-500 flex items-center justify-between"
+              >
+                <span className="font-medium">Mouvements de Stocks</span>
+                <ArrowRight className="w-4 h-4 text-gray-400" />
+              </Link>
+              {onOpenDeputyModal && !currentUser?.is_deputy && (
+                <button
+                  type="button"
+                  onClick={onOpenDeputyModal}
+                  className="p-3 rounded-xl border border-brand-200 bg-brand-50/40 dark:border-brand-800 dark:bg-brand-500/10 flex items-center justify-between text-brand-700 dark:text-brand-300 font-semibold"
+                >
+                  <span>+ Ajouter / Gérer mon Adjoint</span>
+                  <UserCheck className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Mini-Dashboard Chorale / Accueil / Social / Secrétariat / Structure (Section 9)
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <div className="lg:col-span-8">
         <ComponentCard
-          title="Membres de mon Département"
-          desc="Suivi des membres affectés à votre département"
+          title={
+            isChoraleDept
+              ? "Mini-Dashboard Chorale · Membres, Répétitions & Présence"
+              : "Membres & Activités de ma Structure"
+          }
+          desc="Suivi des membres, présence et tâches propres à votre département"
           action={
             <Link href="/members/new">
               <Button variant="outline" size="sm">
@@ -501,13 +714,14 @@ function DeptAdminView({
       <div className="lg:col-span-4 space-y-6">
         <Card>
           <h3 className="font-semibold text-sm text-gray-800 dark:text-white/90 mb-3">
-            Actions Département
+            Actions de la Structure
           </h3>
           <div className="grid grid-cols-1 gap-2 text-xs">
             {[
               { href: "/members/new", label: "Enregistrer un membre" },
               { href: "/assimilation", label: "Pipeline d'assimilation" },
               { href: "/ai/ocr-vision", label: "Scan fiche de présence" },
+              { href: "/departments", label: "Gérer mon département" },
             ].map(({ href, label }) => (
               <Link
                 key={href}
@@ -520,29 +734,15 @@ function DeptAdminView({
                 <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-brand-500" />
               </Link>
             ))}
-          </div>
-        </Card>
-
-        <Card>
-          <h3 className="font-semibold text-sm text-gray-800 dark:text-white/90 mb-2">
-            Ma Délégation
-          </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            Permissions accordées par votre responsable
-          </p>
-          <div className="space-y-1.5">
-            {currentUser?.delegated_permissions?.length > 0 ? (
-              currentUser.delegated_permissions.map((p: string) => (
-                <div
-                  key={p}
-                  className="flex items-center gap-2 text-xs text-success-700 dark:text-success-400"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{p}</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-gray-400 italic">Aucune délégation active</p>
+            {onOpenDeputyModal && !currentUser?.is_deputy && (
+              <button
+                type="button"
+                onClick={onOpenDeputyModal}
+                className="p-3 rounded-xl border border-brand-200 bg-brand-50/40 dark:border-brand-800 dark:bg-brand-500/10 flex items-center justify-between text-brand-700 dark:text-brand-300 font-semibold"
+              >
+                <span>+ Ajouter / Gérer mon Adjoint</span>
+                <UserCheck className="w-4 h-4" />
+              </button>
             )}
           </div>
         </Card>
@@ -623,14 +823,27 @@ function AdjointView({ currentUser }: { currentUser: any }) {
 // Main Dashboard Page
 // ─────────────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { currentCampus, isGlobalScope, campuses, currentUser, currentCampusId } =
-    useTenant();
+  const {
+    currentCampus,
+    isGlobalScope,
+    campuses,
+    currentUser,
+    currentCampusId,
+    setCurrentCampusId,
+  } = useTenant();
   const {
     isSuperSuperAdmin,
     isSuperAdmin,
     isAdminDept,
     isAdjoint,
+    isFinanceDept,
+    isPatrimoineDept,
+    isChoraleDept,
+    canCreateExtension,
+    canManageDepartments,
+    canAssignDeputy,
     canManageMembers,
+    canManageUsers,
     role,
   } = useRole();
 
@@ -647,7 +860,7 @@ export default function DashboardPage() {
   const [isDeputyModalOpen, setIsDeputyModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Formulaire Création d'Extension (Section 10)
+  // Formulaire Création d'Extension (Section 10 & 20)
   const [extensionForm, setExtensionForm] = useState({
     name: "",
     code: "",
@@ -656,6 +869,7 @@ export default function DashboardPage() {
     city: "Pointe-Noire",
     address: "",
     parent: 1, // Église Mère Mpita par défaut
+    lead_pastor: "" as string,
   });
 
   // Formulaire Création de Département (Section 11 & 8)
@@ -706,7 +920,7 @@ export default function DashboardPage() {
 
     setIsSubmitting(true);
     try {
-      await campusesService.createCampus({
+      const payload: any = {
         name: extensionForm.name,
         code: extensionForm.code || `HSC-${extensionForm.city.toUpperCase().slice(0, 4)}`,
         campus_type: extensionForm.campus_type,
@@ -714,7 +928,11 @@ export default function DashboardPage() {
         city: extensionForm.city,
         address: extensionForm.address,
         parent: extensionForm.parent,
-      });
+      };
+      if (extensionForm.lead_pastor) {
+        payload.lead_pastor = Number(extensionForm.lead_pastor);
+      }
+      await campusesService.createCampus(payload);
       alert(`Nouvelle extension « ${extensionForm.name} » créée avec succès !`);
       setIsExtensionModalOpen(false);
       setExtensionForm({
@@ -725,6 +943,7 @@ export default function DashboardPage() {
         city: "Pointe-Noire",
         address: "",
         parent: 1,
+        lead_pastor: "",
       });
       await loadDashboardData();
     } catch (err) {
@@ -860,7 +1079,7 @@ export default function DashboardPage() {
           {/* Action buttons (spécifiques aux sections 10 & 11) */}
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Super Super Admin & Super Admin : Bouton direct « + Créer un Compte Responsable / Nommer un Pasteur » */}
-            {(isSuperSuperAdmin || isSuperAdmin) && (
+            {canManageUsers && (
               <Button
                 variant="default"
                 size="sm"
@@ -888,7 +1107,7 @@ export default function DashboardPage() {
             )}
 
             {/* Super Super Admin : Bouton « + Créer une extension » (Section 10) */}
-            {isSuperSuperAdmin && (
+            {canCreateExtension && (
               <Button
                 variant="default"
                 size="sm"
@@ -901,7 +1120,7 @@ export default function DashboardPage() {
             )}
 
             {/* Super Admin : Bouton « + Créer un département » (Section 11) */}
-            {isSuperAdmin && (
+            {canManageDepartments && (
               <Button
                 variant="default"
                 size="sm"
@@ -913,8 +1132,8 @@ export default function DashboardPage() {
               </Button>
             )}
 
-            {/* Super Super Admin & Super Admin : Bouton « + Ajouter un adjoint » (Sections 10 & 11) */}
-            {(isSuperSuperAdmin || isSuperAdmin) && (
+            {/* Titulaire à chaque niveau (SSA, SA, Admin Dept) : Bouton « + Ajouter un adjoint » (Sections 7, 10, 11, 19) */}
+            {canAssignDeputy && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1016,6 +1235,19 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* Contenu Métier Principal (8 cols) */}
         <div className="xl:col-span-8 space-y-6">
+          {currentUser?.is_deputy && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800/50 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-900 dark:text-emerald-200">
+              <span className="font-semibold flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4 text-emerald-600" />
+                Mode Adjoint Délégué — Vous agissez dans le périmètre de{" "}
+                <strong>{currentUser.deputy_of_name || "votre titulaire"}</strong>
+              </span>
+              <span className="font-mono text-[11px]">
+                Permissions : {(currentUser.delegated_permissions || []).join(", ") || "lecture"}
+              </span>
+            </div>
+          )}
+
           {isSuperSuperAdmin ? (
             <GlobalNetworkView
               campuses={campuses}
@@ -1023,6 +1255,7 @@ export default function DashboardPage() {
               vouchers={vouchers}
               isLoading={isLoading}
               onOpenCreateUser={() => setIsCreateUserModalOpen(true)}
+              onSelectCampus={(id) => setCurrentCampusId(id)}
             />
           ) : isSuperAdmin ? (
             <CampusAdminView
@@ -1034,8 +1267,13 @@ export default function DashboardPage() {
           ) : isAdminDept ? (
             <DeptAdminView
               members={members}
+              vouchers={vouchers}
               isLoading={isLoading}
               currentUser={currentUser}
+              isFinanceDept={isFinanceDept}
+              isPatrimoineDept={isPatrimoineDept}
+              isChoraleDept={isChoraleDept}
+              onOpenDeputyModal={() => setIsDeputyModalOpen(true)}
             />
           ) : (
             <AdjointView currentUser={currentUser} />
@@ -1125,6 +1363,22 @@ export default function DashboardPage() {
               onChange={(e) => setExtensionForm({ ...extensionForm, address: e.target.value })}
               placeholder="Quartier, Avenue, Référence..."
             />
+          </div>
+
+          <div>
+            <Label>Attribuer un Super Admin (Pasteur / Berger dirigeant)</Label>
+            <select
+              value={extensionForm.lead_pastor}
+              onChange={(e) => setExtensionForm({ ...extensionForm, lead_pastor: e.target.value })}
+              className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+            >
+              <option value="">-- Nommer plus tard ou choisir un responsable existant --</option>
+              {usersList.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.title ? `${u.title} ` : ""}{u.first_name} {u.last_name} ({u.username})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="pt-2 flex justify-end gap-2">

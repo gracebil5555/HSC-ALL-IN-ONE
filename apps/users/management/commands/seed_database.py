@@ -212,11 +212,89 @@ class Command(BaseCommand):
 
     def _seed_departments(self):
         from apps.departments.models import Department, DepartmentCatalog
-        from apps.campuses.models import Campus
+        from apps.users.models import User
 
         mpita = self._campuses_cache.get("Mpita (Église Mère)")
         if not mpita:
             return
+
+        # Section 19 : Administrateurs de départements fictifs et Adjoint pour le prototype
+        dept_admins_seed = [
+            {
+                "username": "grace.mavoungou",
+                "first_name": "Grace",
+                "last_name": "MAVOUNGOU",
+                "email": "grace.mavoungou@hsc-eglise.org",
+                "title": "Diaconesse",
+                "ecclesial_function": "DIACRE",
+                "role": "ADMIN_DEPT",
+                "dept_code": "FINANCES",
+            },
+            {
+                "username": "mireille.oka",
+                "first_name": "Mireille",
+                "last_name": "OKA",
+                "email": "mireille.oka@hsc-eglise.org",
+                "title": "Responsable",
+                "ecclesial_function": "RESPONSABLE",
+                "role": "ADMIN_DEPT",
+                "dept_code": "PATRIMOINE",
+            },
+            {
+                "username": "geraldine.louange",
+                "first_name": "Géraldine",
+                "last_name": "MOUKALA",
+                "email": "geraldine.louange@hsc-eglise.org",
+                "title": "Bergère",
+                "ecclesial_function": "BERGER",
+                "role": "ADMIN_DEPT",
+                "dept_code": "CHORALE",
+            },
+            {
+                "username": "david.accueil",
+                "first_name": "David",
+                "last_name": "MABIALA",
+                "email": "david.accueil@hsc-eglise.org",
+                "title": "Frère",
+                "ecclesial_function": "RESPONSABLE",
+                "role": "ADMIN_DEPT",
+                "dept_code": "ACCUEIL",
+            },
+        ]
+
+        dept_admins_by_code = {}
+        for item in dept_admins_seed:
+            dept_code = item.pop("dept_code")
+            u, _ = User.objects.get_or_create(username=item["username"], defaults=item)
+            for k, v in item.items():
+                setattr(u, k, v)
+            u.campus = mpita
+            u.set_password("Password123!")
+            u.save()
+            dept_admins_by_code[dept_code] = u
+
+        # Adjoint de l'Église Mère (Pasteur Chancel NIATI)
+        pastor_chancel = self._users_cache.get("chancel.niati")
+        if pastor_chancel:
+            adjoint_mpita, _ = User.objects.get_or_create(
+                username="jean.bouesso",
+                defaults={
+                    "first_name": "Jean",
+                    "last_name": "BOUESSO",
+                    "email": "jean.bouesso@hsc-eglise.org",
+                    "title": "Ancien",
+                    "ecclesial_function": "ANCIEN",
+                    "role": "ADJOINT",
+                },
+            )
+            adjoint_mpita.campus = mpita
+            adjoint_mpita.role = "ADJOINT"
+            adjoint_mpita.is_deputy = True
+            adjoint_mpita.deputy_of = pastor_chancel
+            if not adjoint_mpita.delegated_permissions:
+                adjoint_mpita.delegated_permissions = ["voir", "creer", "valider", "exporter"]
+            adjoint_mpita.set_password("Password123!")
+            adjoint_mpita.save()
 
         for cat in DepartmentCatalog.objects.all():
             dept, created = Department.objects.get_or_create(
@@ -230,6 +308,10 @@ class Command(BaseCommand):
                     "is_active": True,
                 },
             )
+            admin_user = dept_admins_by_code.get(cat.code)
+            if admin_user and not dept.admin_id:
+                dept.admin = admin_user
+                dept.save(update_fields=["admin"])
             if created:
                 self.stdout.write(f"  [Créé] Département Mpita : {dept.name}")
 

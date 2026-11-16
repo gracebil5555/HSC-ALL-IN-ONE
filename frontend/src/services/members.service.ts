@@ -26,15 +26,23 @@ export const membersService = {
     }
   },
 
-  createMember: async (data: Omit<Member, "id" | "joined_date">): Promise<Member> => {
+  createMember: async (data: any): Promise<Member> => {
     try {
-      const payload = {
+      const payload: Record<string, any> = {
         first_name: data.first_name,
         last_name: data.last_name,
         phone: data.phone,
-        campus: data.campus_id ? parseInt(data.campus_id) : 1,
-        status: 'NOUVEAU', // Default status for backend
+        address: data.residential_area || data.address || "",
+        campus: data.campus_id ? parseInt(String(data.campus_id)) : 1,
+        status: data.status || "NOUVEAU",
+        ecclesial_function: data.ecclesial_function || "MEMBRE",
       };
+      if (data.brigade_id) {
+        payload.brigade = parseInt(String(data.brigade_id));
+      }
+      if (data.department_id) {
+        payload.department = parseInt(String(data.department_id));
+      }
       const response = await apiClient.post('/members/list/', payload);
       return response.data;
     } catch (error) {
@@ -68,7 +76,7 @@ export const membersService = {
     }
   },
 
-  createBrigade: async (data: { name: string; neighborhood?: string; campus: number }): Promise<any> => {
+  createBrigade: async (data: { name: string; neighborhood?: string; campus: number; leader?: number | null }): Promise<any> => {
     try {
       const response = await apiClient.post('/members/brigades/', data);
       return response.data;

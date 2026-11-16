@@ -43,6 +43,14 @@ export type GranularPermissionKey = (typeof GRANULAR_PERMISSIONS)[number]["key"]
 // ──────────────────────────────────────────────────────────────────────────────
 // Profil utilisateur courant (retourné par /api/v1/users/me/)
 // ──────────────────────────────────────────────────────────────────────────────
+export interface AdministeredDepartmentInfo {
+  id: number;
+  name: string;
+  code: string;
+  campus_id: string;
+  is_deputy: boolean;
+}
+
 export interface CurrentUser {
   id: string;
   username: string;
@@ -56,6 +64,8 @@ export interface CurrentUser {
   /** Rôle technique RBAC */
   role: UserRole;
   role_display: string;
+  /** Rôle effectif (hérité du titulaire si Adjoint) */
+  effective_role?: UserRole;
 
   /** Fonction ecclésiale (distincte du rôle) */
   ecclesial_function: EcclesialFunction;
@@ -70,7 +80,12 @@ export interface CurrentUser {
   is_deputy: boolean;
   deputy_of?: string | null;
   deputy_of_name?: string;
+  deputy_of_role?: UserRole | null;
   delegated_permissions: string[];
+
+  /** Départements administrés (ou comme adjoint) */
+  administered_departments?: AdministeredDepartmentInfo[];
+  department_codes?: string[];
 
   phone?: string;
   avatar?: string;
@@ -86,6 +101,7 @@ export interface CreateUserPayload {
   role: UserRole;
   ecclesial_function: EcclesialFunction;
   campus?: number | null;
+  department_id?: number | null;
   phone?: string;
   password?: string;
 }

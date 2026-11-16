@@ -2,7 +2,6 @@ services:
   - type: web
     name: hsc-backend
     runtime: python
-    rootDir: backend
     buildCommand: "./build.sh"
     startCommand: "python manage.py migrate --no-input && python manage.py seed_database && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
     envVars:

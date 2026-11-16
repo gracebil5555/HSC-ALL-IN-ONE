@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useTenant } from "@/context/TenantContext";
+import { useRole } from "@/hooks/useRole";
 import { financesService } from "@/services/finances.service";
+import { departmentsService, DepartmentItem } from "@/services/departments.service";
 import { CashVoucher, VoucherStatus } from "@/types/finance.types";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
@@ -27,7 +29,9 @@ import {
 
 export default function VouchersPage() {
   const { currentCampusId, currentUser } = useTenant();
+  const { canApproveVouchers, canDisburseVouchers, canManageFinances } = useRole();
   const [vouchers, setVouchers] = useState<CashVoucher[]>([]);
+  const [departmentsList, setDepartmentsList] = useState<DepartmentItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -42,7 +46,7 @@ export default function VouchersPage() {
   const [approvalNote, setApprovalNote] = useState("Dépense autorisée pour le service du culte.");
   const [disbursementNote, setDisbursementNote] = useState("Fonds remis en espèces contre signature.");
   const [newBeneficiary, setNewBeneficiary] = useState("");
-  const [newDepartment, setNewDepartment] = useState("Chantres & Sono");
+  const [newDepartment, setNewDepartment] = useState("");
   const [newAmount, setNewAmount] = useState<number>(15000);
   const [newPurpose, setNewPurpose] = useState("");
 
@@ -51,6 +55,12 @@ export default function VouchersPage() {
     financesService.getVouchers(currentCampusId).then((data) => {
       setVouchers(data);
       setIsLoading(false);
+    });
+    departmentsService.getDepartments(currentCampusId).then((depts) => {
+      setDepartmentsList(depts);
+      if (depts.length > 0 && !newDepartment) {
+        setNewDepartment(depts[0].name);
+      }
     });
   };
 
@@ -295,10 +305,10 @@ export default function VouchersPage() {
                   <span className="text-[10px] text-gray-400">{vch.created_at}</span>
                 </TableCell>
 
-                {/* Actions depending on workflow state */}
+                {/* Actions depending on workflow state & role permissions */}
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1.5">
-                    {vch.status === "PENDING" && (
+                    {vch.status === "PENDING" && canApproveVouchers && (
                       <Button
                         variant="default"
                         size="sm"
@@ -310,7 +320,7 @@ export default function VouchersPage() {
                       </Button>
                     )}
 
-                    {vch.status === "APPROVED" && (
+                    {vch.status === "APPROVED" && canDisburseVouchers && (
                       <Button
                         variant="success"
                         size="sm"
@@ -499,18 +509,22 @@ export default function VouchersPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="dept" required>
-                  Département
+                  Département (Dynamique)
                 </Label>
                 <Select
                   id="dept"
                   value={newDepartment}
                   onChange={(e) => setNewDepartment(e.target.value)}
                 >
-                  <option value="Chantres & Sono">Chantres & Sono</option>
-                  <option value="Logistique & Énergie">Logistique & Énergie</option>
-                  <option value="Protocole & Accueil">Protocole & Accueil</option>
-                  <option value="Secrétariat & Direction">Secrétariat & Direction</option>
-                  <option value="Diaconat & Social">Diaconat & Social</option>
+                  {departmentsList.length > 0 ? (
+                    departmentsList.map((d) => (
+                      <option key={d.id} value={d.name}>
+                        {d.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="Administration Générale">Administration Générale</option>
+                  )}
                 </Select>
               </div>
 

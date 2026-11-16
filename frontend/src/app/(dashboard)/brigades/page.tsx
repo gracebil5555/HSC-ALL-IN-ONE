@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTenant } from "@/context/TenantContext";
 import { membersService } from "@/services/members.service";
-import { MOCK_BRIGADES } from "@/mocks/brigades.mock";
+import { usersService } from "@/services/users.service";
+import { CurrentUser } from "@/types/auth.types";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -24,8 +25,9 @@ import {
 } from "lucide-react";
 
 export default function BrigadesPage() {
-  const { currentCampusId, currentCampus } = useTenant();
+  const { currentCampusId, currentCampus, currentUser } = useTenant();
   const [brigades, setBrigades] = useState<any[]>([]);
+  const [usersList, setUsersList] = useState<CurrentUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal State
@@ -33,13 +35,17 @@ export default function BrigadesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
+  const [leaderId, setLeaderId] = useState("");
 
   const loadBrigades = async () => {
     setIsLoading(true);
     try {
-      const data = await membersService.getBrigades(currentCampusId);
-      if (data && data.length > 0) {
-        // Map backend brigade to frontend structure with sensible fallbacks
+      const [data, usersData] = await Promise.all([
+        membersService.getBrigades(currentCampusId),
+        usersService.getUsers(currentCampusId),
+      ]);
+      setUsersList(usersData);
+      if (Array.isArray(data)) {
         const mapped = data.map((b: any) => ({
           id: String(b.id),
           name: b.name,
@@ -54,16 +60,11 @@ export default function BrigadesPage() {
         }));
         setBrigades(mapped);
       } else {
-        // Fallback to mock data if backend has none
-        setBrigades(
-          currentCampusId === "all"
-            ? MOCK_BRIGADES
-            : MOCK_BRIGADES.filter((b) => b.campus_id === currentCampusId || b.campus_id === "campus-mpita-hq")
-        );
+        setBrigades([]);
       }
     } catch (error) {
       console.error("Error loading brigades:", error);
-      setBrigades(MOCK_BRIGADES);
+      setBrigades([]);
     } finally {
       setIsLoading(false);
     }
@@ -79,15 +80,20 @@ export default function BrigadesPage() {
 
     setIsSubmitting(true);
     try {
-      const campusIdNum = currentCampusId !== "all" ? parseInt(currentCampusId) : 1;
+      const campusIdNum =
+        currentCampusId !== "all" && currentCampusId
+          ? parseInt(currentCampusId)
+          : Number(currentUser?.campus_id || 1);
       await membersService.createBrigade({
         name,
         neighborhood,
         campus: campusIdNum,
+        leader: leaderId ? Number(leaderId) : null,
       });
       setIsModalOpen(false);
       setName("");
       setNeighborhood("");
+      setLeaderId("");
       await loadBrigades();
     } catch (error) {
       console.error("Failed to create brigade:", error);
@@ -259,6 +265,25 @@ export default function BrigadesPage() {
               value={neighborhood}
               onChange={(e) => setNeighborhood(e.target.value)}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="b_leader">
+              Responsable / Chef de Brigade (Section 6 & 11)
+            </Label>
+            <select
+              id="b_leader"
+              value={leaderId}
+              onChange={(e) => setLeaderId(e.target.value)}
+              className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+            >
+              <option value="">-- Assigner un responsable --</option>
+              {usersList.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.first_name} {u.last_name} ({u.ecclesial_function_display || u.ecclesial_function})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="pt-4 flex items-center justify-end gap-3 border-t border-gray-100 dark:border-gray-800">

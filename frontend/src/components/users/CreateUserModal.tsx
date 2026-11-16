@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
 import { useTenant } from "@/context/TenantContext";
 import { useRole } from "@/hooks/useRole";
 import { usersService } from "@/services/users.service";
+import { departmentsService, DepartmentItem } from "@/services/departments.service";
 import {
   OPERATIONAL_PROFILES,
   OperationalProfile,
@@ -50,8 +51,17 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
     role: (isSuperSuperAdmin ? "SUPER_ADMIN" : "ADMIN_DEPT") as UserRole,
     ecclesial_function: (isSuperSuperAdmin ? "PASTEUR" : "RESPONSABLE") as EcclesialFunction,
     campus: initialCampus,
+    department_id: "" as string,
     password: "",
   });
+
+  const [departments, setDepartments] = useState<DepartmentItem[]>([]);
+
+  useEffect(() => {
+    if (isOpen && createForm.campus) {
+      departmentsService.getDepartments(String(createForm.campus)).then(setDepartments);
+    }
+  }, [isOpen, createForm.campus]);
 
   const activeProfile =
     OPERATIONAL_PROFILES.find((p) => p.id === selectedProfileId) ||
@@ -89,6 +99,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
         role: createForm.role,
         ecclesial_function: createForm.ecclesial_function,
         campus: createForm.campus,
+        department_id: createForm.department_id ? Number(createForm.department_id) : null,
         password: createForm.password || "HSC@2026",
       });
 
@@ -107,6 +118,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
         role: activeProfile.role,
         ecclesial_function: activeProfile.function,
         campus: initialCampus,
+        department_id: "",
         password: "",
       });
 
@@ -300,6 +312,25 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
             </p>
           )}
         </div>
+
+        {/* 5. Rattachement au Département (si Admin Dept ou Adjoint) */}
+        {(createForm.role === "ADMIN_DEPT" || createForm.role === "ADJOINT") && (
+          <div>
+            <Label>Département / Structure administrée (Section 8)</Label>
+            <select
+              value={createForm.department_id}
+              onChange={(e) => setCreateForm({ ...createForm, department_id: e.target.value })}
+              className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+            >
+              <option value="">-- Choisir parmi les départements actifs de l'Église --</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} ({d.code})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <Label>Mot de passe initial (laisser vide pour : HSC@2026)</Label>
