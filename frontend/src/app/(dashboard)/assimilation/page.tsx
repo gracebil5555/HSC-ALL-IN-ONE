@@ -97,8 +97,8 @@ export default function AssimilationKanbanPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Pipeline d'Assimilation des Âmes (Kanban 5 Étapes)"
-        description="Parcours structuré de la 1ère visite jusqu'à l'intégration dans un département de service"
+        title="Suivi du parcours d'intégration"
+        description="De la première visite à l'intégration dans la vie et le service de l'Église."
         breadcrumbs={[
           { label: "Assimilation" },
         ]}
@@ -171,7 +171,7 @@ export default function AssimilationKanbanPage() {
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-xs font-bold text-brand-600">
-                                {member.first_name[0]}
+                                {member.first_name?.[0] || ""}
                               </div>
                             )}
                           </div>
@@ -184,7 +184,7 @@ export default function AssimilationKanbanPage() {
                             </Link>
                             <span className="text-[10px] text-gray-400 flex items-center gap-1">
                               <MapPin className="w-3 h-3" />
-                              {member.residential_area}
+                              {member.residential_area || "—"}
                             </span>
                           </div>
                         </div>
@@ -209,15 +209,19 @@ export default function AssimilationKanbanPage() {
 
                       {/* Bottom row: Direct WhatsApp + Stage arrows */}
                       <div className="flex items-center justify-between pt-2.5 border-t border-gray-100 dark:border-gray-700/60 text-xs">
-                        <a
-                          href={`https://wa.me/${member.whatsapp.replace(/[^0-9]/g, "")}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1 text-success-600 hover:text-success-700 text-[11px] font-medium"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span>WhatsApp</span>
-                        </a>
+                        {(member.whatsapp || member.phone) ? (
+                          <a
+                            href={`https://wa.me/${(member.whatsapp || member.phone || "").replace(/[^0-9]/g, "")}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1 text-success-600 hover:text-success-700 text-[11px] font-medium"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            <span>WhatsApp</span>
+                          </a>
+                        ) : (
+                          <span className="text-[11px] text-gray-400">—</span>
+                        )}
 
                         <div className="flex items-center gap-1">
                           {colIdx > 0 && (

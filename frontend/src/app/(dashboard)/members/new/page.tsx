@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTenant } from "@/context/TenantContext";
 import { useRole } from "@/hooks/useRole";
-import { membersService } from "@/services/members.service";
+import {
+  membersService,
+  DEFAULT_ECCLESIAL_FUNCTIONS,
+  DEFAULT_MEMBER_STATUSES,
+} from "@/services/members.service";
 import { departmentsService, DepartmentItem } from "@/services/departments.service";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ComponentCard } from "@/components/ui/Card";
@@ -13,18 +17,6 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label, Textarea, Select } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
 import { ArrowLeft, Save, Lock } from "lucide-react";
-
-const ECCLESIAL_FUNCTION_OPTIONS = [
-  { value: "MEMBRE", label: "Membre / Fidèle" },
-  { value: "OUVRIER", label: "Ouvrier / Serviteur" },
-  { value: "ADJOINT_DEPT", label: "Adjoint de Département" },
-  { value: "RESPONSABLE_DEPT", label: "Responsable de Département" },
-  { value: "BERGER", label: "Berger" },
-  { value: "DIACRE", label: "Diacre / Diaconesse" },
-  { value: "ANCIEN", label: "Ancien" },
-  { value: "EVANGELISTE", label: "Évangéliste" },
-  { value: "PASTEUR", label: "Pasteur" },
-];
 
 export default function NewMemberPage() {
   const router = useRouter();
@@ -43,6 +35,9 @@ export default function NewMemberPage() {
   const [residentialArea, setResidentialArea] = useState("");
   const [campusId, setCampusId] = useState(defaultCampusId);
   const [ecclesialFunction, setEcclesialFunction] = useState("MEMBRE");
+  const [status, setStatus] = useState("NOUVEAU");
+  const [smsOptIn, setSmsOptIn] = useState(true);
+  const [whatsappOptIn, setWhatsappOptIn] = useState(true);
   const [brigadeId, setBrigadeId] = useState<string>("");
   const [departmentId, setDepartmentId] = useState<string>("");
   const [stage, setStage] = useState<any>("ACCUEIL");
@@ -53,6 +48,8 @@ export default function NewMemberPage() {
 
   const [brigadesList, setBrigadesList] = useState<any[]>([]);
   const [departmentsList, setDepartmentsList] = useState<DepartmentItem[]>([]);
+  const [ecclesialFunctions, setEcclesialFunctions] = useState(DEFAULT_ECCLESIAL_FUNCTIONS);
+  const [memberStatuses, setMemberStatuses] = useState(DEFAULT_MEMBER_STATUSES);
 
   useEffect(() => {
     if (!isSuperSuperAdmin && currentUser?.campus_id) {
@@ -63,6 +60,19 @@ export default function NewMemberPage() {
       setCampusId(String(campuses[0].id));
     }
   }, [currentUser, currentCampusId, campuses, isSuperSuperAdmin]);
+
+  useEffect(() => {
+    membersService.getEcclesialFunctions().then((items) => {
+      if (items.length > 0) {
+        setEcclesialFunctions(items.map((i) => ({ code: i.code, label: i.label })));
+      }
+    });
+    membersService.getMemberStatuses().then((items) => {
+      if (items.length > 0) {
+        setMemberStatuses(items.map((i) => ({ code: i.code, label: i.label, color: i.color })));
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (!campusId) return;
@@ -85,7 +95,10 @@ export default function NewMemberPage() {
       whatsapp: whatsapp || phone,
       residential_area: residentialArea,
       campus_id: lockedCampusId,
+      status,
       ecclesial_function: ecclesialFunction,
+      sms_opt_in: smsOptIn,
+      whatsapp_opt_in: whatsappOptIn,
       brigade_id: brigadeId ? brigadeId : null,
       department_id: departmentId || null,
       assimilation_stage: stage,
@@ -216,12 +229,54 @@ export default function NewMemberPage() {
                 value={ecclesialFunction}
                 onChange={(e) => setEcclesialFunction(e.target.value)}
               >
-                {ECCLESIAL_FUNCTION_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
+                {ecclesialFunctions.map((opt) => (
+                  <option key={opt.code} value={opt.code}>
                     {opt.label}
                   </option>
                 ))}
               </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="memberStatus" required>
+                Statut du Membre
+              </Label>
+              <Select
+                id="memberStatus"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                {memberStatuses.map((st) => (
+                  <option key={st.code} value={st.code}>
+                    {st.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              <div className="flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/40">
+                <div>
+                  <span className="text-xs font-semibold text-gray-800 dark:text-white block">
+                    Consentement SMS (Opt-in)
+                  </span>
+                  <span className="text-[11px] text-gray-400">
+                    Autorise les messages de bienvenue et rappels par SMS
+                  </span>
+                </div>
+                <Toggle checked={smsOptIn} onChange={setSmsOptIn} />
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/40">
+                <div>
+                  <span className="text-xs font-semibold text-gray-800 dark:text-white block">
+                    Consentement WhatsApp (Opt-in)
+                  </span>
+                  <span className="text-[11px] text-gray-400">
+                    Autorise les messages de bienvenue et infos par WhatsApp
+                  </span>
+                </div>
+                <Toggle checked={whatsappOptIn} onChange={setWhatsappOptIn} />
+              </div>
             </div>
 
             <div>

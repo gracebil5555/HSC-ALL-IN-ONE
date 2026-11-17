@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTenant } from "@/context/TenantContext";
+import { useRole } from "@/hooks/useRole";
 import { membersService } from "@/services/members.service";
 import { usersService } from "@/services/users.service";
 import { CurrentUser } from "@/types/auth.types";
@@ -26,6 +27,7 @@ import {
 
 export default function BrigadesPage() {
   const { currentCampusId, currentCampus, currentUser } = useTenant();
+  const { hasPermission } = useRole();
   const [brigades, setBrigades] = useState<any[]>([]);
   const [usersList, setUsersList] = useState<CurrentUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,10 +112,12 @@ export default function BrigadesPage() {
         description="Cellules de proximité, encadrement des fidèles, réunions hebdomadaires et pointage des présences."
         breadcrumbs={[{ label: "Gouvernance" }, { label: "Brigades" }]}
         action={
-          <Button variant="default" size="default" onClick={() => setIsModalOpen(true)}>
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Créer une Brigade
-          </Button>
+          hasPermission("creer") ? (
+            <Button variant="default" size="default" onClick={() => setIsModalOpen(true)}>
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Créer une Brigade
+            </Button>
+          ) : undefined
         }
       />
 

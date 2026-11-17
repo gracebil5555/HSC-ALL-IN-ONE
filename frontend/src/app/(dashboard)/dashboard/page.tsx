@@ -4,8 +4,10 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { membersService } from "@/services/members.service";
 import { financesService } from "@/services/finances.service";
+import { patrimoineService } from "@/services/patrimoine.service";
 import { Member } from "@/types/member.types";
-import { CashVoucher } from "@/types/finance.types";
+import { CashVoucher, FinancialEntry } from "@/types/finance.types";
+import { Asset, StockItem } from "@/types/patrimoine.types";
 import { useTenant } from "@/context/TenantContext";
 import { useRole } from "@/hooks/useRole";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -13,6 +15,10 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Card, ComponentCard } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { formatCurrency } from "@/lib/utils";
+import { ChoraleRehearsalsWidget } from "@/components/dashboard/ChoraleRehearsalsWidget";
 import {
   TableContainer,
   TableHead,
@@ -46,7 +52,7 @@ import { Input, Label } from "@/components/ui/Input";
 import { OrganizationalContacts } from "@/components/contacts/OrganizationalContacts";
 import { CreateUserModal } from "@/components/users/CreateUserModal";
 import { campusesService } from "@/services/campuses.service";
-import { departmentsService, DepartmentCatalogItem } from "@/services/departments.service";
+import { departmentsService, DepartmentCatalogItem, DepartmentItem } from "@/services/departments.service";
 import { usersService } from "@/services/users.service";
 import { GRANULAR_PERMISSIONS, CurrentUser } from "@/types/auth.types";
 
@@ -58,6 +64,8 @@ function GlobalNetworkView({
   campuses,
   members,
   vouchers,
+  assets,
+  alerts,
   isLoading,
   onOpenCreateUser,
   onSelectCampus,
@@ -65,14 +73,66 @@ function GlobalNetworkView({
   campuses: any[];
   members: Member[];
   vouchers: CashVoucher[];
+  assets: Asset[];
+  alerts: any[];
   isLoading: boolean;
   onOpenCreateUser?: () => void;
   onSelectCampus?: (campusId: string) => void;
 }) {
+  const activeCampuses = campuses.filter((c) => c.is_active !== false).length;
+  const inactiveCampuses = campuses.length - activeCampuses;
+  const consolidatedVnc = assets.reduce(
+    (sum, a) => sum + Number((a as any).amount_in_hq_currency ?? a.net_book_value ?? a.estimated_value ?? 0),
+    0
+  );
+  const voucherHqTotal = vouchers.reduce(
+    (sum, v) => sum + Number((v as any).amount_in_hq_currency ?? v.amount ?? 0),
+    0
+  );
+  const localCurrencyTotals = vouchers.reduce<Record<string, number>>((acc, v) => {
+    const cur = ((v as any).currency || (v as any).campus_currency || "XAF").toUpperCase();
+    acc[cur] = (acc[cur] || 0) + Number(v.amount ?? 0);
+    return acc;
+  }, {});
+  const localCurrencySummary = Object.entries(localCurrencyTotals)
+    .map(([cur, total]) => formatCurrency(total, cur))
+    .join(" • ");
+  const activeAlertsCount = alerts.filter((a) => a.status !== "RESOLVED").length;
+
+  const countryBreakdown = campuses.reduce<Record<string, number>>((acc, c) => {
+    const key = `${c.country || "N/A"} (${c.city || "N/A"})`;
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Table: Campus Overview & Pasteurs Dirigeants */}
-      <div className="lg:col-span-8">
+      <div className="lg:col-span-8 space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Églises du Réseau</span>
+            <span className="text-lg font-bold text-gray-900 dark:text-white block mt-0.5">
+              {campuses.length} <span className="text-xs font-normal text-success-600">({activeCampuses} actives / {inactiveCampuses} inactives)</span>
+            </span>
+          </Card>
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Consolidation Multi-Devises (Siège HQ)</span>
+            <span className="text-lg font-bold text-brand-600 dark:text-brand-400 tabular-nums block mt-0.5">
+              {formatCurrency(consolidatedVnc, "XAF")}
+            </span>
+            <span className="text-[11px] text-gray-400 tabular-nums block mt-1">
+              Pièces : {formatCurrency(voucherHqTotal, "XAF")}
+              {localCurrencySummary ? ` (${localCurrencySummary})` : ""}
+            </span>
+          </Card>
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Alertes Pastorales Actives</span>
+            <span className="text-lg font-bold text-error-600 block mt-0.5">
+              {activeAlertsCount}
+            </span>
+          </Card>
+        </div>
         <ComponentCard
           title="Performance & Effectifs par Campus"
           desc="Cliquez sur une Église ou extension pour inspecter son périmètre"
@@ -96,7 +156,15 @@ function GlobalNetworkView({
             </div>
           }
         >
-          <TableContainer>
+          {isLoading ? (
+            <TableSkeleton rows={4} columns={4} />
+          ) : campuses.length === 0 ? (
+            <EmptyState
+              title="Aucun campus configuré"
+              description="Créez votre Église mère ou une extension pour démarrer la consolidation multi-sites."
+            />
+          ) : (
+            <TableContainer>
             <TableHead>
               <TableHeaderCell>Campus & Ville</TableHeaderCell>
               <TableHeaderCell>Type</TableHeaderCell>
@@ -145,15 +213,23 @@ function GlobalNetworkView({
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center gap-1.5 text-xs text-success-600 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-success-500" />
-                      Actif
-                    </span>
+                    {c.is_active !== false ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-success-600 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success-500" />
+                        Actif
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-gray-400 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                        Inactif
+                      </span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </TableContainer>
+          )}
         </ComponentCard>
       </div>
 
@@ -189,6 +265,23 @@ function GlobalNetworkView({
                 <span className="font-bold text-gray-900 dark:text-white">
                   {members.filter((m: any) => m.assimilation_stage === key).length}
                 </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <h3 className="font-semibold text-sm text-gray-800 dark:text-white/90 mb-3">
+            Répartition Pays & Villes
+          </h3>
+          <div className="space-y-2 text-xs">
+            {Object.entries(countryBreakdown).map(([loc, count]) => (
+              <div
+                key={loc}
+                className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+              >
+                <span className="text-gray-600 dark:text-gray-300">{loc}</span>
+                <span className="font-bold text-gray-900 dark:text-white">{count}</span>
               </div>
             ))}
           </div>
@@ -232,17 +325,60 @@ function GlobalNetworkView({
 function CampusAdminView({
   members,
   vouchers,
+  departments,
+  brigades,
+  assets,
+  transactions,
   isLoading,
   onOpenCreateUser,
 }: {
   members: Member[];
   vouchers: CashVoucher[];
+  departments: DepartmentItem[];
+  brigades: any[];
+  assets: Asset[];
+  transactions: FinancialEntry[];
   isLoading: boolean;
   onOpenCreateUser?: () => void;
 }) {
+  const activeDeptsCount = departments.filter((d) => d.is_active).length;
+  const activeBrigadesCount = brigades.filter((b) => b.is_active !== false).length;
+  const campusCredits = transactions.filter((t) => t.entry_type === "CREDIT").reduce((s, t) => s + Number(t.amount || 0), 0);
+  const campusDebits = transactions.filter((t) => t.entry_type === "DEBIT").reduce((s, t) => s + Number(t.amount || 0), 0);
+  const campusBalance = campusCredits - campusDebits;
+  const campusVnc = assets.reduce((s, a) => s + Number(a.net_book_value ?? a.estimated_value ?? 0), 0);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <div className="lg:col-span-8 space-y-6">
+        {/* Synthèse Campus : Départements, GDC/Brigades, Finances, Patrimoine */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Départements Actifs</span>
+            <span className="text-lg font-bold text-gray-900 dark:text-white block mt-0.5">
+              {activeDeptsCount}
+            </span>
+          </Card>
+          <Card>
+            <span className="text-[11px] text-gray-500 block">GDC / Brigades</span>
+            <span className="text-lg font-bold text-gray-900 dark:text-white block mt-0.5">
+              {activeBrigadesCount}
+            </span>
+          </Card>
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Solde Trésorerie</span>
+            <span className="text-lg font-bold text-success-600 block mt-0.5">
+              {campusBalance.toLocaleString("fr-FR")} F
+            </span>
+          </Card>
+          <Card>
+            <span className="text-[11px] text-gray-500 block">VNC Patrimoine</span>
+            <span className="text-lg font-bold text-brand-600 dark:text-brand-400 block mt-0.5">
+              {campusVnc.toLocaleString("fr-FR")} F
+            </span>
+          </Card>
+        </div>
+
         <ComponentCard
           title="Dernières Pièces de Caisse du Campus"
           desc="Validation pastorale et traçabilité des décaissements"
@@ -254,29 +390,24 @@ function CampusAdminView({
             </Link>
           }
         >
-          <TableContainer>
-            <TableHead>
-              <TableHeaderCell>N° Pièce</TableHeaderCell>
-              <TableHeaderCell>Bénéficiaire & Motif</TableHeaderCell>
-              <TableHeaderCell>Montant</TableHeaderCell>
-              <TableHeaderCell>Statut</TableHeaderCell>
-              <TableHeaderCell>Date</TableHeaderCell>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4 text-gray-500">
-                    Chargement…
-                  </TableCell>
-                </TableRow>
-              ) : vouchers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4 text-gray-500">
-                    Aucune pièce de caisse récente
-                  </TableCell>
-                </TableRow>
-              ) : (
-                vouchers.slice(0, 5).map((vch) => (
+          {isLoading ? (
+            <TableSkeleton rows={4} columns={5} />
+          ) : vouchers.length === 0 ? (
+            <EmptyState
+              title="Aucune pièce de caisse récente"
+              description="Les demandes de décaissement et validations pastorales du campus apparaîtront ici."
+            />
+          ) : (
+            <TableContainer>
+              <TableHead>
+                <TableHeaderCell>N° Pièce</TableHeaderCell>
+                <TableHeaderCell>Bénéficiaire & Motif</TableHeaderCell>
+                <TableHeaderCell>Montant</TableHeaderCell>
+                <TableHeaderCell>Statut</TableHeaderCell>
+                <TableHeaderCell>Date</TableHeaderCell>
+              </TableHead>
+              <TableBody>
+                {vouchers.slice(0, 5).map((vch) => (
                   <TableRow key={vch.id}>
                     <TableCell>
                       <span className="font-mono text-xs font-bold text-gray-800 dark:text-white">
@@ -290,7 +421,7 @@ function CampusAdminView({
                       <span className="text-[11px] text-gray-400">{vch.purpose}</span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs font-bold text-gray-900 dark:text-white">
+                      <span className="text-xs font-bold tabular-nums text-gray-900 dark:text-white">
                         {Number(vch.amount).toLocaleString("fr-FR")} FCFA
                       </span>
                     </TableCell>
@@ -313,10 +444,10 @@ function CampusAdminView({
                       </span>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </TableContainer>
+                ))}
+              </TableBody>
+            </TableContainer>
+          )}
         </ComponentCard>
       </div>
 
@@ -427,6 +558,11 @@ function CampusAdminView({
 function DeptAdminView({
   members,
   vouchers,
+  assets,
+  stocks,
+  transactions,
+  alerts,
+  departmentCodes,
   isLoading,
   currentUser,
   isFinanceDept,
@@ -436,6 +572,11 @@ function DeptAdminView({
 }: {
   members: Member[];
   vouchers: CashVoucher[];
+  assets: Asset[];
+  stocks: StockItem[];
+  transactions: FinancialEntry[];
+  alerts: any[];
+  departmentCodes: string[];
   isLoading: boolean;
   currentUser: any;
   isFinanceDept: boolean;
@@ -445,7 +586,32 @@ function DeptAdminView({
 }) {
   // 1. Mini-Dashboard Financier (Section 9 : Admin Finance)
   if (isFinanceDept) {
+    const totalCredits = transactions.filter((t) => t.entry_type === "CREDIT").reduce((s, t) => s + Number(t.amount || 0), 0);
+    const totalDebits = transactions.filter((t) => t.entry_type === "DEBIT").reduce((s, t) => s + Number(t.amount || 0), 0);
+    const balance = totalCredits - totalDebits;
+    const pendingCount = vouchers.filter((v) => v.status === "PENDING").length;
+
     return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Recettes (Crédits)</span>
+            <span className="text-lg font-bold text-success-600 block mt-0.5">+{totalCredits.toLocaleString("fr-FR")} F</span>
+          </Card>
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Dépenses (Débits)</span>
+            <span className="text-lg font-bold text-error-600 block mt-0.5">-{totalDebits.toLocaleString("fr-FR")} F</span>
+          </Card>
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Solde Net</span>
+            <span className="text-lg font-bold text-brand-600 block mt-0.5">{balance.toLocaleString("fr-FR")} F</span>
+          </Card>
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Pièces en Attente</span>
+            <span className="text-lg font-bold text-warning-600 block mt-0.5">{pendingCount}</span>
+          </Card>
+        </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8">
           <ComponentCard
@@ -460,28 +626,23 @@ function DeptAdminView({
               </Link>
             }
           >
-            <TableContainer>
-              <TableHead>
-                <TableHeaderCell>N° Pièce</TableHeaderCell>
-                <TableHeaderCell>Bénéficiaire & Motif</TableHeaderCell>
-                <TableHeaderCell>Montant</TableHeaderCell>
-                <TableHeaderCell>Statut</TableHeaderCell>
-              </TableHead>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-4 text-gray-500">
-                      Chargement…
-                    </TableCell>
-                  </TableRow>
-                ) : vouchers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-4 text-gray-500">
-                      Aucune pièce de caisse enregistrée
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  vouchers.slice(0, 8).map((v) => (
+            {isLoading ? (
+              <TableSkeleton rows={4} columns={4} />
+            ) : vouchers.length === 0 ? (
+              <EmptyState
+                title="Aucune pièce de caisse enregistrée"
+                description="Les demandes de décaissement et validations pastorales apparaîtront ici."
+              />
+            ) : (
+              <TableContainer>
+                <TableHead>
+                  <TableHeaderCell>N° Pièce</TableHeaderCell>
+                  <TableHeaderCell>Bénéficiaire & Motif</TableHeaderCell>
+                  <TableHeaderCell>Montant</TableHeaderCell>
+                  <TableHeaderCell>Statut</TableHeaderCell>
+                </TableHead>
+                <TableBody>
+                  {vouchers.slice(0, 8).map((v) => (
                     <TableRow key={v.id}>
                       <TableCell>
                         <span className="font-mono text-xs font-bold">{v.voucher_number}</span>
@@ -491,7 +652,7 @@ function DeptAdminView({
                         <span className="text-[11px] text-gray-400">{v.purpose}</span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-xs font-bold">
+                        <span className="text-xs font-bold tabular-nums">
                           {Number(v.amount).toLocaleString("fr-FR")} FCFA
                         </span>
                       </TableCell>
@@ -511,10 +672,10 @@ function DeptAdminView({
                         </Badge>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </TableContainer>
+                  ))}
+                </TableBody>
+              </TableContainer>
+            )}
           </ComponentCard>
         </div>
 
@@ -552,17 +713,42 @@ function DeptAdminView({
           </Card>
         </div>
       </div>
+      </div>
     );
   }
 
   // 2. Mini-Dashboard Patrimonial (Section 9 : Admin Patrimoine)
   if (isPatrimoineDept) {
+    const grossTotal = assets.reduce((s, a) => s + Number(a.purchase_price ?? a.estimated_value ?? 0), 0);
+    const vncTotal = assets.reduce((s, a) => s + Number(a.net_book_value ?? a.estimated_value ?? 0), 0);
+    const lowStockAlerts = stocks.filter((st) => st.quantity_in_stock <= st.alert_threshold).length;
+
     return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Nombre d'Actifs</span>
+            <span className="text-lg font-bold text-gray-900 dark:text-white block mt-0.5">{assets.length}</span>
+          </Card>
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Valeur Brute</span>
+            <span className="text-lg font-bold text-gray-900 dark:text-white block mt-0.5">{grossTotal.toLocaleString("fr-FR")} F</span>
+          </Card>
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Valeur Nette (VNC)</span>
+            <span className="text-lg font-bold text-brand-600 block mt-0.5">{vncTotal.toLocaleString("fr-FR")} F</span>
+          </Card>
+          <Card>
+            <span className="text-[11px] text-gray-500 block">Alertes Stock</span>
+            <span className="text-lg font-bold text-error-600 block mt-0.5">{lowStockAlerts}</span>
+          </Card>
+        </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8">
           <ComponentCard
-            title="Mini-Dashboard Patrimoine & Logistique"
-            desc="Suivi des immobilisations, état des biens, amortissements et stocks consommables (Section 9 & 13)"
+            title="Mini-Dashboard Patrimoine · Actifs & Amortissements"
+            desc="Suivi des immobilisations, amortissement linéaire et VNC (Section 9 & 13)"
             action={
               <Link href="/patrimoine/assets">
                 <Button variant="default" size="sm">
@@ -571,30 +757,35 @@ function DeptAdminView({
               </Link>
             }
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
-              <Link
-                href="/patrimoine/assets"
-                className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-500 transition-all"
-              >
-                <h4 className="font-bold text-sm text-gray-900 dark:text-white mb-1">
-                  Inventaire & Immobilisations
-                </h4>
-                <p className="text-xs text-gray-500">
-                  Valeur d'acquisition, état des équipements, localisation et étiquettes QR Code.
-                </p>
-              </Link>
-              <Link
-                href="/patrimoine/stocks"
-                className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-500 transition-all"
-              >
-                <h4 className="font-bold text-sm text-gray-900 dark:text-white mb-1">
-                  Stocks Consommables & Mouvements
-                </h4>
-                <p className="text-xs text-gray-500">
-                  Entrées, sorties pour culte et seuils d'alerte de réapprovisionnement.
-                </p>
-              </Link>
-            </div>
+            {isLoading ? (
+              <TableSkeleton rows={4} columns={5} />
+            ) : assets.length === 0 ? (
+              <EmptyState
+                title="Aucun actif enregistré"
+                description="Enregistrez vos équipements et immobilisations pour suivre leur amortissement et VNC."
+              />
+            ) : (
+              <TableContainer>
+                <TableHead>
+                  <TableHeaderCell>Code</TableHeaderCell>
+                  <TableHeaderCell>Équipement</TableHeaderCell>
+                  <TableHeaderCell>Valeur Brute</TableHeaderCell>
+                  <TableHeaderCell>Amort. Cumulé</TableHeaderCell>
+                  <TableHeaderCell>VNC</TableHeaderCell>
+                </TableHead>
+                <TableBody>
+                  {assets.slice(0, 6).map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell><span className="font-mono text-xs font-bold">{a.asset_code}</span></TableCell>
+                      <TableCell><span className="text-xs font-semibold">{a.name}</span></TableCell>
+                      <TableCell><span className="text-xs tabular-nums">{Number(a.purchase_price || 0).toLocaleString("fr-FR")} F</span></TableCell>
+                      <TableCell><span className="text-xs tabular-nums text-warning-600">-{Number(a.accumulated_depreciation || 0).toLocaleString("fr-FR")} F</span></TableCell>
+                      <TableCell><span className="text-xs font-bold tabular-nums text-brand-600">{Number(a.net_book_value ?? a.estimated_value ?? 0).toLocaleString("fr-FR")} F</span></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </TableContainer>
+            )}
           </ComponentCard>
         </div>
 
@@ -632,11 +823,59 @@ function DeptAdminView({
           </Card>
         </div>
       </div>
+      </div>
     );
   }
 
   // 3. Mini-Dashboard Chorale / Accueil / Social / Secrétariat / Structure (Section 9)
+  const adminDeptIds = new Set((currentUser?.administered_departments || []).map((d: any) => Number(d.id)));
+  const scopedMembers =
+    adminDeptIds.size > 0 && !departmentCodes.some((c) => ["ACCUEIL", "SECRETARIAT", "SOCIAL", "BRIGADE", "GDC"].includes(c))
+      ? members.filter((m) => m.department && adminDeptIds.has(Number(m.department)))
+      : members;
+
+  const isAccueilOrSocialOrSec = departmentCodes.some((c) => ["ACCUEIL", "SOCIAL", "SECRETARIAT"].includes(c));
+  const newComersCount = scopedMembers.filter((m) => m.status === "NOUVEAU").length;
+  const activeAlertsCount = alerts.filter((a) => a.status !== "RESOLVED").length;
+
   return (
+    <div className="space-y-6">
+      {(isChoraleDept || isAccueilOrSocialOrSec) && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {isChoraleDept ? (
+            <>
+              <Card>
+                <span className="text-[11px] text-gray-500 block">Chantres & Musiciens</span>
+                <span className="text-lg font-bold text-gray-900 dark:text-white block mt-0.5">{scopedMembers.length}</span>
+              </Card>
+              <Card>
+                <span className="text-[11px] text-gray-500 block">Prochaine Répétition</span>
+                <span className="text-sm font-bold text-brand-600 block mt-0.5">Samedi · 15h00 (Sanctuaire)</span>
+              </Card>
+              <Card>
+                <span className="text-[11px] text-gray-500 block">Culte Dominical</span>
+                <span className="text-sm font-bold text-success-600 block mt-0.5">Dimanche · 08h30 & 11h00</span>
+              </Card>
+            </>
+          ) : (
+            <>
+              <Card>
+                <span className="text-[11px] text-gray-500 block">Nouveaux Venus</span>
+                <span className="text-lg font-bold text-brand-600 block mt-0.5">{newComersCount}</span>
+              </Card>
+              <Card>
+                <span className="text-[11px] text-gray-500 block">Alertes Sociales / Pastorales</span>
+                <span className="text-lg font-bold text-error-600 block mt-0.5">{activeAlertsCount}</span>
+              </Card>
+              <Card>
+                <span className="text-[11px] text-gray-500 block">Total Fidèles Suivis</span>
+                <span className="text-lg font-bold text-gray-900 dark:text-white block mt-0.5">{scopedMembers.length}</span>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <div className="lg:col-span-8">
         <ComponentCard
@@ -655,34 +894,29 @@ function DeptAdminView({
             </Link>
           }
         >
-          <TableContainer>
-            <TableHead>
-              <TableHeaderCell>Membre</TableHeaderCell>
-              <TableHeaderCell>Fonction</TableHeaderCell>
-              <TableHeaderCell>Statut</TableHeaderCell>
-              <TableHeaderCell>Étape</TableHeaderCell>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-4 text-gray-500">
-                    Chargement…
-                  </TableCell>
-                </TableRow>
-              ) : members.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-4 text-gray-500">
-                    Aucun membre dans votre département
-                  </TableCell>
-                </TableRow>
-              ) : (
-                members.slice(0, 8).map((m) => (
+          {isLoading ? (
+            <TableSkeleton rows={4} columns={4} />
+          ) : scopedMembers.length === 0 ? (
+            <EmptyState
+              title="Aucun membre dans votre département"
+              description="Ajoutez des membres ou nouveaux venus pour suivre leur parcours dans votre structure."
+            />
+          ) : (
+            <TableContainer>
+              <TableHead>
+                <TableHeaderCell>Membre</TableHeaderCell>
+                <TableHeaderCell>Fonction</TableHeaderCell>
+                <TableHeaderCell>Statut</TableHeaderCell>
+                <TableHeaderCell>Étape</TableHeaderCell>
+              </TableHead>
+              <TableBody>
+                {scopedMembers.slice(0, 8).map((m) => (
                   <TableRow key={m.id}>
                     <TableCell>
                       <span className="font-semibold text-xs text-gray-900 dark:text-white block">
                         {m.first_name} {m.last_name}
                       </span>
-                      <span className="text-[11px] text-gray-400">{m.phone}</span>
+                      <span className="text-[11px] font-mono tabular-nums text-gray-400">{m.phone}</span>
                     </TableCell>
                     <TableCell>
                       <span className="text-xs text-gray-600 dark:text-gray-300">
@@ -704,10 +938,10 @@ function DeptAdminView({
                       </span>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </TableContainer>
+                ))}
+              </TableBody>
+            </TableContainer>
+          )}
         </ComponentCard>
       </div>
 
@@ -747,6 +981,14 @@ function DeptAdminView({
           </div>
         </Card>
       </div>
+    </div>
+
+    {isChoraleDept && (
+      <ChoraleRehearsalsWidget
+        campusId={currentUser?.campus_id || currentUser?.campus}
+        members={scopedMembers}
+      />
+    )}
     </div>
   );
 }
@@ -839,6 +1081,7 @@ export default function DashboardPage() {
     isFinanceDept,
     isPatrimoineDept,
     isChoraleDept,
+    departmentCodes,
     canCreateExtension,
     canManageDepartments,
     canAssignDeputy,
@@ -849,6 +1092,12 @@ export default function DashboardPage() {
 
   const [members, setMembers] = useState<Member[]>([]);
   const [vouchers, setVouchers] = useState<CashVoucher[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [stocks, setStocks] = useState<StockItem[]>([]);
+  const [transactions, setTransactions] = useState<FinancialEntry[]>([]);
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [brigades, setBrigades] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<DepartmentItem[]>([]);
   const [usersList, setUsersList] = useState<CurrentUser[]>([]);
   const [catalogList, setCatalogList] = useState<DepartmentCatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -889,19 +1138,49 @@ export default function DashboardPage() {
     permissions: ["voir", "creer"] as string[],
   });
 
+  const isStrictlyFinanceOrPatrimoine =
+    isAdminDept && (isFinanceDept || isPatrimoineDept) && !isChoraleDept;
+
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [membersData, vouchersData, usersData, catalogData] = await Promise.all([
-        membersService.getMembers(currentCampusId),
+      const canFetchPatrimoine = isSuperSuperAdmin || isSuperAdmin || isPatrimoineDept;
+      const canFetchTransactions = isSuperSuperAdmin || isSuperAdmin || isFinanceDept;
+      const canFetchMembersAndAlerts = !isStrictlyFinanceOrPatrimoine;
+
+      const [
+        membersData,
+        vouchersData,
+        usersData,
+        catalogData,
+        assetsData,
+        stocksData,
+        transactionsData,
+        alertsData,
+        brigadesData,
+        departmentsData,
+      ] = await Promise.all([
+        canFetchMembersAndAlerts ? membersService.getMembers(currentCampusId) : Promise.resolve([]),
         financesService.getVouchers(currentCampusId),
         usersService.getUsers(currentCampusId),
         departmentsService.getCatalog(),
+        canFetchPatrimoine ? patrimoineService.getAssets(currentCampusId) : Promise.resolve([]),
+        canFetchPatrimoine ? patrimoineService.getStocks(currentCampusId) : Promise.resolve([]),
+        canFetchTransactions ? financesService.getJournalEntries(currentCampusId) : Promise.resolve([]),
+        canFetchMembersAndAlerts ? membersService.getAlerts(currentCampusId) : Promise.resolve([]),
+        canFetchMembersAndAlerts ? membersService.getBrigades(currentCampusId) : Promise.resolve([]),
+        departmentsService.getDepartments(currentCampusId),
       ]);
       setMembers(membersData);
       setVouchers(vouchersData);
       setUsersList(usersData);
       setCatalogList(catalogData);
+      setAssets(assetsData);
+      setStocks(stocksData);
+      setTransactions(transactionsData);
+      setAlerts(alertsData);
+      setBrigades(brigadesData);
+      setDepartments(departmentsData);
     } catch (error) {
       console.error("Failed to load dashboard data", error);
     } finally {
@@ -1020,8 +1299,10 @@ export default function DashboardPage() {
   const newMembers = members.filter((m) => m.status === "NOUVEAU").length;
   const totalDisbursed = vouchers
     .filter((v) => v.status === "DISBURSED")
-    .reduce((acc, v) => acc + v.amount, 0);
+    .reduce((acc, v) => acc + Number(v.amount || 0), 0);
   const pendingVouchers = vouchers.filter((v) => v.status === "PENDING").length;
+  const activeAlertsCount = alerts.filter((a) => a.status !== "RESOLVED").length;
+  const openAlertsCount = alerts.filter((a) => a.status === "OPEN").length;
 
   // ── Role badge label ────────────────────────────────────────────────────────
   const roleBadge = isSuperSuperAdmin
@@ -1166,31 +1447,35 @@ export default function DashboardPage() {
 
       {/* ── KPI StatCards ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 md:gap-6">
-        <StatCard
-          title={
-            isSuperSuperAdmin
-              ? "Membres Totaux Réseau"
-              : isAdminDept
-              ? "Membres du Département"
-              : "Membres du Campus"
-          }
-          value={isLoading ? "…" : totalMembers.toString()}
-          change="+8.4%"
-          trend="up"
-          subtitle="Enregistrés et suivis"
-          icon={<Users className="w-6 h-6 text-brand-500" />}
-          iconBgColor="bg-brand-50 dark:bg-brand-500/15"
-        />
+        {!isStrictlyFinanceOrPatrimoine && (
+          <>
+            <StatCard
+              title={
+                isSuperSuperAdmin
+                  ? "Membres Totaux Réseau"
+                  : isAdminDept
+                  ? "Membres du Département"
+                  : "Membres du Campus"
+              }
+              value={isLoading ? "…" : totalMembers.toString()}
+              change="+8.4%"
+              trend="up"
+              subtitle="Enregistrés et suivis"
+              icon={<Users className="w-6 h-6 text-brand-500" />}
+              iconBgColor="bg-brand-50 dark:bg-brand-500/15"
+            />
 
-        <StatCard
-          title="Nouveaux Venus"
-          value={isLoading ? "…" : newMembers.toString()}
-          change="Personnes à intégrer"
-          trend="up"
-          subtitle="Module d'accueil en cours"
-          icon={<Church className="w-6 h-6 text-blue-light-500" />}
-          iconBgColor="bg-blue-light-50 dark:bg-blue-light-500/15"
-        />
+            <StatCard
+              title="Nouveaux Venus"
+              value={isLoading ? "…" : newMembers.toString()}
+              change="Personnes à intégrer"
+              trend="up"
+              subtitle="Module d'accueil en cours"
+              icon={<Church className="w-6 h-6 text-blue-light-500" />}
+              iconBgColor="bg-blue-light-50 dark:bg-blue-light-500/15"
+            />
+          </>
+        )}
 
         {(isSuperSuperAdmin || isSuperAdmin) && (
           <StatCard
@@ -1222,10 +1507,10 @@ export default function DashboardPage() {
 
         <StatCard
           title="Alertes Pastorales"
-          value="0"
-          change="0 critique"
-          trend="down"
-          subtitle="Aucune alerte active"
+          value={isLoading ? "…" : activeAlertsCount.toString()}
+          change={`${openAlertsCount} ouverte(s)`}
+          trend={activeAlertsCount > 0 ? "up" : "down"}
+          subtitle={activeAlertsCount > 0 ? "À traiter par l'équipe pastorale" : "Aucune alerte active"}
           icon={<ShieldAlert className="w-6 h-6 text-error-500" />}
           iconBgColor="bg-error-50 dark:bg-error-500/15"
         />
@@ -1253,6 +1538,8 @@ export default function DashboardPage() {
               campuses={campuses}
               members={members}
               vouchers={vouchers}
+              assets={assets}
+              alerts={alerts}
               isLoading={isLoading}
               onOpenCreateUser={() => setIsCreateUserModalOpen(true)}
               onSelectCampus={(id) => setCurrentCampusId(id)}
@@ -1261,6 +1548,10 @@ export default function DashboardPage() {
             <CampusAdminView
               members={members}
               vouchers={vouchers}
+              departments={departments}
+              brigades={brigades}
+              assets={assets}
+              transactions={transactions}
               isLoading={isLoading}
               onOpenCreateUser={() => setIsCreateUserModalOpen(true)}
             />
@@ -1268,6 +1559,11 @@ export default function DashboardPage() {
             <DeptAdminView
               members={members}
               vouchers={vouchers}
+              assets={assets}
+              stocks={stocks}
+              transactions={transactions}
+              alerts={alerts}
+              departmentCodes={departmentCodes}
               isLoading={isLoading}
               currentUser={currentUser}
               isFinanceDept={isFinanceDept}

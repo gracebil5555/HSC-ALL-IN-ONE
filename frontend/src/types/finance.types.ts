@@ -23,6 +23,7 @@ export interface CashVoucher {
   approved_by_name?: string | null;
   approved_at?: string | null;
   disbursed_at?: string | null;
+  receipt_file?: string | null;
   receipt_attachment?: string | null;
   audit_trail: AuditLogEntry[];
 }
@@ -37,4 +38,31 @@ export interface FinancialEntry {
   campus_id: string;
   registered_by: string;
   created_at: string;
+}
+
+export type CurrencyCode = "XAF" | "CAD" | "EUR" | "USD";
+
+export interface ExchangeRate {
+  id: number;
+  from_currency: CurrencyCode;
+  to_currency: CurrencyCode;
+  rate: string;
+  effective_date: string;
+  is_active: boolean;
+  created_by?: number | null;
+  created_by_name?: string | null;
+  created_at: string;
+}
+
+export interface AccountingPeriodClose {
+  id: number;
+  campus: number;
+  campus_name?: string;
+  year: number;
+  month: number;
+  is_closed: boolean;
+  closed_by?: number | null;
+  closed_by_name?: string | null;
+  closed_at: string;
+  notes: string;
 }

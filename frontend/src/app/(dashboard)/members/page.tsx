@@ -3,7 +3,12 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTenant } from "@/context/TenantContext";
-import { membersService } from "@/services/members.service";
+import { useRole } from "@/hooks/useRole";
+import {
+  membersService,
+  DEFAULT_ECCLESIAL_FUNCTIONS,
+  DEFAULT_MEMBER_STATUSES,
+} from "@/services/members.service";
 import { Member } from "@/types/member.types";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { TableContainer, TableHead, TableHeaderCell, TableBody, TableRow, TableCell } from "@/components/ui/Table";
@@ -20,15 +25,32 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Settings2,
 } from "lucide-react";
+import { CatalogConfigModal } from "@/components/users/CatalogConfigModal";
 
 export default function MembersPage() {
   const { currentCampusId } = useTenant();
+  const { canManageMembers, hasPermission, isSuperSuperAdmin } = useRole();
+  const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [search, setSearch] = useState("");
   const [brigadeFilter, setBrigadeFilter] = useState<"all" | "assigned" | "unassigned">("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [functionFilter, setFunctionFilter] = useState<string>("all");
+  const [ecclesialFunctions, setEcclesialFunctions] = useState(DEFAULT_ECCLESIAL_FUNCTIONS);
+  const [memberStatuses, setMemberStatuses] = useState(DEFAULT_MEMBER_STATUSES);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    membersService.getEcclesialFunctions().then((items) => {
+      if (items.length > 0) setEcclesialFunctions(items.map((i) => ({ code: i.code, label: i.label })));
+    });
+    membersService.getMemberStatuses().then((items) => {
+      if (items.length > 0) setMemberStatuses(items.map((i) => ({ code: i.code, label: i.label, color: i.color })));
+    });
+  }, []);
 
   useEffect(() => {
     setIsLoading(true);
@@ -41,10 +63,10 @@ export default function MembersPage() {
   const filteredMembers = members.filter((m) => {
     const query = search.toLowerCase();
     const matchesSearch =
-      m.first_name.toLowerCase().includes(query) ||
-      m.last_name.toLowerCase().includes(query) ||
-      m.residential_area.toLowerCase().includes(query) ||
-      m.phone.includes(query);
+      (m.first_name || "").toLowerCase().includes(query) ||
+      (m.last_name || "").toLowerCase().includes(query) ||
+      (m.residential_area || "").toLowerCase().includes(query) ||
+      (m.phone || "").includes(query);
 
     const matchesBrigade =
       brigadeFilter === "all"
@@ -54,8 +76,10 @@ export default function MembersPage() {
         : m.brigade_id !== null;
 
     const matchesStage = stageFilter === "all" ? true : m.assimilation_stage === stageFilter;
+    const matchesStatus = statusFilter === "all" ? true : m.status === statusFilter;
+    const matchesFunction = functionFilter === "all" ? true : m.ecclesial_function === functionFilter;
 
-    return matchesSearch && matchesBrigade && matchesStage;
+    return matchesSearch && matchesBrigade && matchesStage && matchesStatus && matchesFunction;
   });
 
   const getStageBadge = (stage: Member["assimilation_stage"]) => {
@@ -80,12 +104,26 @@ export default function MembersPage() {
         description="Gestion complète des fidèles, affectation aux brigades et suivi spirituel"
         breadcrumbs={[{ label: "Membres" }]}
         action={
-          <Link href="/members/new">
-            <Button variant="default" size="default">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Nouveau Membre
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            {isSuperSuperAdmin && (
+              <Button
+                variant="outline"
+                size="default"
+                onClick={() => setIsCatalogModalOpen(true)}
+              >
+                <Settings2 className="w-4 h-4 mr-2" />
+                Fonctions & Statuts
+              </Button>
+            )}
+            {canManageMembers && hasPermission("creer") && (
+              <Link href="/members/new">
+                <Button variant="default" size="default">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Nouveau Membre
+                </Button>
+              </Link>
+            )}
+          </div>
         }
       />
 
@@ -145,6 +183,28 @@ export default function MembersPage() {
               <option value="BAPTEME">4. Candidat Baptême</option>
               <option value="INTEGRE">5. Intégré Département</option>
             </select>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-10 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-gray-700 dark:text-gray-300 shadow-theme-xs"
+            >
+              <option value="all">Tous les statuts</option>
+              {memberStatuses.map((st) => (
+                <option key={st.code} value={st.code}>{st.label}</option>
+              ))}
+            </select>
+
+            <select
+              value={functionFilter}
+              onChange={(e) => setFunctionFilter(e.target.value)}
+              className="h-10 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-gray-700 dark:text-gray-300 shadow-theme-xs"
+            >
+              <option value="all">Toutes fonctions ecclésiales</option>
+              {ecclesialFunctions.map((fn) => (
+                <option key={fn.code} value={fn.code}>{fn.label}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -188,8 +248,8 @@ export default function MembersPage() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center font-bold text-xs text-brand-600">
-                          {member.first_name[0]}
-                          {member.last_name[0]}
+                          {member.first_name?.[0] || ""}
+                          {member.last_name?.[0] || ""}
                         </div>
                       )}
                     </div>
@@ -201,7 +261,7 @@ export default function MembersPage() {
                         {member.first_name} {member.last_name}
                       </Link>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {member.residential_area}
+                        {member.residential_area || "—"}
                       </span>
                     </div>
                   </div>
@@ -290,6 +350,19 @@ export default function MembersPage() {
           )}
         </TableBody>
       </TableContainer>
+
+      <CatalogConfigModal
+        isOpen={isCatalogModalOpen}
+        onClose={() => setIsCatalogModalOpen(false)}
+        onUpdated={() => {
+          membersService.getEcclesialFunctions().then((items) => {
+            if (items.length > 0) setEcclesialFunctions(items.map((i) => ({ code: i.code, label: i.label })));
+          });
+          membersService.getMemberStatuses().then((items) => {
+            if (items.length > 0) setMemberStatuses(items.map((i) => ({ code: i.code, label: i.label, color: i.color })));
+          });
+        }}
+      />
     </div>
   );
 }

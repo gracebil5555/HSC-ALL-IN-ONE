@@ -19,6 +19,7 @@ class Command(BaseCommand):
                 self._seed_campuses()
                 self._seed_department_catalog()
                 self._seed_departments()
+                self._seed_registers()
             self.stdout.write(self.style.SUCCESS("=== Seed terminé avec succès ==="))
         except Exception as e:
             self.stdout.write(self.style.WARNING(f"[WARN] Seed partiel ou déjà effectué : {e}"))
@@ -314,4 +315,20 @@ class Command(BaseCommand):
                 dept.save(update_fields=["admin"])
             if created:
                 self.stdout.write(f"  [Créé] Département Mpita : {dept.name}")
+
+    def _seed_registers(self):
+        from apps.campuses.models import Campus
+        from apps.finances.models import Register
+
+        for campus in Campus.objects.all():
+            reg, created = Register.objects.get_or_create(
+                campus=campus,
+                register_type="CASH",
+                defaults={
+                    "name": f"Caisse Principale - {campus.name}",
+                    "current_balance": 0,
+                },
+            )
+            if created:
+                self.stdout.write(f"  [Créé] Caisse : {reg.name}")
 

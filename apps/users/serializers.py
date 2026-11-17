@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, RoleAssignment
 from .permissions import _effective_role, _get_user_department_codes
 from apps.campuses.models import Campus
 from apps.departments.models import Department
@@ -15,7 +15,8 @@ class UserSerializer(serializers.ModelSerializer):
     campus_name = serializers.SerializerMethodField()
     role_display = serializers.CharField(source='get_role_display', read_only=True)
     effective_role = serializers.SerializerMethodField()
-    ecclesial_function_display = serializers.CharField(source='get_ecclesial_function_display', read_only=True)
+    ecclesial_function = serializers.CharField(max_length=40, default="FIDELE", required=False)
+    ecclesial_function_display = serializers.SerializerMethodField()
     deputy_of_name = serializers.CharField(source='deputy_of.get_full_name', read_only=True)
     deputy_of_role = serializers.CharField(source='deputy_of.role', read_only=True)
     administered_departments = serializers.SerializerMethodField()
@@ -36,8 +37,11 @@ class UserSerializer(serializers.ModelSerializer):
             'administered_departments', 'department_codes', 'department_id',
             'password'
         ]
+        read_only_fields = ['is_deputy', 'deputy_of', 'delegated_permissions']
 
     def get_campus_id(self, obj):
+        if _effective_role(obj) == "SUPER_SUPER_ADMIN":
+            return None
         if obj.campus_id:
             return str(obj.campus_id)
         if obj.is_deputy and obj.deputy_of and obj.deputy_of.campus_id:
@@ -45,6 +49,8 @@ class UserSerializer(serializers.ModelSerializer):
         return None
 
     def get_campus_name(self, obj):
+        if _effective_role(obj) == "SUPER_SUPER_ADMIN":
+            return None
         if obj.campus:
             return obj.campus.name
         if obj.is_deputy and obj.deputy_of and obj.deputy_of.campus:
@@ -53,6 +59,13 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_effective_role(self, obj):
         return _effective_role(obj)
+
+    def get_ecclesial_function_display(self, obj):
+        from apps.members.models import EcclesialFunctionCatalog
+        cat = EcclesialFunctionCatalog.objects.filter(code=obj.ecclesial_function).values_list("label", flat=True).first()
+        if cat:
+            return cat
+        return dict(User.ECCLESIAL_FUNCTION_CHOICES).get(obj.ecclesial_function, obj.ecclesial_function)
 
     def get_administered_departments(self, obj):
         items = []
@@ -105,9 +118,10 @@ class UserSerializer(serializers.ModelSerializer):
                     user.deputy_of_id = dept.admin_id
                     user.is_deputy = True
                     user.save(update_fields=["deputy_of_id", "is_deputy"])
-            else:
+                dept.save()
+            elif user.role == "ADMIN_DEPT":
                 dept.admin = user
-            dept.save()
+                dept.save()
         except Department.DoesNotExist:
             pass
 
@@ -123,6 +137,22 @@ class UserSerializer(serializers.ModelSerializer):
         self._assign_department(user, department_id)
         return user
 
+
+class RoleAssignmentSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    campus_name = serializers.CharField(source='campus.name', read_only=True)
+    department_name = serializers.CharField(source='department.name', read_only=True)
+    brigade_name = serializers.CharField(source='brigade.name', read_only=True)
+    deputy_of_name = serializers.CharField(source='deputy_of.get_full_name', read_only=True)
+    appointed_by_name = serializers.CharField(source='appointed_by.get_full_name', read_only=True)
+    role_display = serializers.CharField(source='get_role_display', read_only=True)
+
+    class Meta:
+        model = RoleAssignment
+        fields = '__all__'
+        read_only_fields = ['appointed_by', 'created_at']
+
+
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
         department_id = validated_data.pop('department_id', None)
@@ -132,6 +162,22 @@ class UserSerializer(serializers.ModelSerializer):
             user.save()
         self._assign_department(user, department_id)
         return user
+
+
+class RoleAssignmentSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    campus_name = serializers.CharField(source='campus.name', read_only=True)
+    department_name = serializers.CharField(source='department.name', read_only=True)
+    brigade_name = serializers.CharField(source='brigade.name', read_only=True)
+    deputy_of_name = serializers.CharField(source='deputy_of.get_full_name', read_only=True)
+    appointed_by_name = serializers.CharField(source='appointed_by.get_full_name', read_only=True)
+    role_display = serializers.CharField(source='get_role_display', read_only=True)
+
+    class Meta:
+        model = RoleAssignment
+        fields = '__all__'
+        read_only_fields = ['appointed_by', 'created_at']
+
 
 
 

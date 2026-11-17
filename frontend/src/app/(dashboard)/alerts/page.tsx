@@ -1,452 +1,327 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTenant } from "@/context/TenantContext";
-import { PastoralAlert, AlertType, AlertSeverity, AlertStatus } from "@/types/alert.types";
+import { useRole } from "@/hooks/useRole";
+import { membersService } from "@/services/members.service";
+import { Member } from "@/types/member.types";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { TableContainer, TableHead, TableHeaderCell, TableBody, TableRow, TableCell } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { Input, Label, Select } from "@/components/ui/Input";
+import { Input, Label, Select, Textarea } from "@/components/ui/Input";
 import {
   ShieldAlert,
-  AlertTriangle,
-  HeartPulse,
-  HeartHandshake,
-  UserX,
-  Phone,
   CheckCircle2,
   Clock,
   PlusCircle,
-  UserCheck,
 } from "lucide-react";
 
-const INITIAL_ALERTS: PastoralAlert[] = [
-  {
-    id: "alt-01",
-    member_name: "Maman Koumba Véronique",
-    member_phone: "+242 06 612 00 11",
-    residential_area: "Mpita Ravin",
-    campus_id: "campus-mpita-hq",
-    alert_type: "SANTE",
-    severity: "CRITICAL",
-    description: "Hospitalisée d'urgence à l'Hôpital Général de Loandjili (crise d'hypertension sévère). Visite pastorale et prière demandées.",
-    reported_by_name: "Séraphin Mabiala (Chef Brigade David)",
-    assigned_pastor_name: "Pasteur Alain Kimbembe",
-    status: "ASSIGNED",
-    created_at: "2026-09-02 08:30",
-  },
-  {
-    id: "alt-02",
-    member_name: "Famille Moukassa",
-    member_phone: "+242 05 555 44 22",
-    residential_area: "Tié-Tié",
-    campus_id: "campus-mpita-hq",
-    alert_type: "DEUIL",
-    severity: "WARNING",
-    description: "Rappel à Dieu de la mère de famille. Veillée de prière organisée au domicile familial ce vendredi.",
-    reported_by_name: "Grace Mavoungou",
-    assigned_pastor_name: "Pasteur Jean-Marc Ndalla",
-    status: "OPEN",
-    created_at: "2026-09-01 19:00",
-  },
-  {
-    id: "alt-03",
-    member_name: "Frère Yannick Loubaki",
-    member_phone: "+242 06 987 65 43",
-    residential_area: "Ngoyo",
-    campus_id: "campus-ngoyo",
-    alert_type: "DECROCHAGE",
-    severity: "WARNING",
-    description: "Absence inexpliquée aux 3 derniers cultes et répétitions de la chorale. Ne répond pas aux messages de groupe.",
-    reported_by_name: "Dieudonné Massamba",
-    assigned_pastor_name: null,
-    status: "OPEN",
-    created_at: "2026-08-31 11:20",
-  },
-  {
-    id: "alt-04",
-    member_name: "Sœur Prisca Mambou",
-    member_phone: "+242 05 333 11 00",
-    residential_area: "Paka",
-    campus_id: "campus-paka",
-    alert_type: "AIDE_MATERIELLE",
-    severity: "INFO",
-    description: "Difficultés temporaires de subsistance après perte d'emploi. Demande de soutien du diaconat.",
-    reported_by_name: "Diacre Social",
-    assigned_pastor_name: "Pasteur David Makosso",
-    status: "RESOLVED",
-    created_at: "2026-08-26 15:00",
-  },
-];
-
-const isCampusMatch = (itemCampusId: string, selectedCampusId: string) => {
-  if (selectedCampusId === "all") return true;
-  if (itemCampusId === selectedCampusId) return true;
-  const aliasMap: Record<string, string[]> = {
-    "1": ["campus-mpita-hq", "mpita", "1"],
-    "2": ["campus-mpaka", "campus-paka", "mpaka", "2"],
-    "3": ["campus-ngoyo", "ngoyo", "3"],
-    "4": ["campus-moungali", "moungali", "4"],
-    "5": ["campus-canada", "canada", "5"],
-  };
-  const validAliases = aliasMap[selectedCampusId] || [];
-  return validAliases.includes(itemCampusId);
-};
+interface ApiPastoralAlert {
+  id: number;
+  campus: number;
+  member: number;
+  member_name?: string;
+  title: string;
+  description: string;
+  status: "OPEN" | "IN_PROGRESS" | "RESOLVED";
+  assigned_pastor?: number | null;
+  assigned_pastor_name?: string | null;
+  resolution_notes?: string;
+  created_at: string;
+  resolved_at?: string | null;
+}
 
 export default function AlertsPage() {
-  const { currentCampusId, currentUser } = useTenant();
-  const [alerts, setAlerts] = useState<PastoralAlert[]>(INITIAL_ALERTS);
+  const { currentCampusId, currentUser, campuses } = useTenant();
+  const { hasPermission } = useRole();
+  const [alerts, setAlerts] = useState<ApiPastoralAlert[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isNewAlertOpen, setIsNewAlertOpen] = useState(false);
-  const [newMember, setNewMember] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [newArea, setNewArea] = useState("Mpita");
-  const [newType, setNewType] = useState<AlertType>("SANTE");
-  const [newSeverity, setNewSeverity] = useState<AlertSeverity>("WARNING");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
 
-  const filtered = alerts.filter((a) => {
-    const matchesCampus = isCampusMatch(a.campus_id, currentCampusId);
-    const matchesStatus =
-      statusFilter === "all" ? true : a.status === statusFilter;
-    return matchesCampus && matchesStatus;
-  });
+  const resolvedCampusId =
+    currentCampusId && currentCampusId !== "all"
+      ? currentCampusId
+      : String(currentUser?.campus_id || campuses[0]?.id || "1");
 
-  const getSeverityBadge = (severity: AlertSeverity) => {
-    switch (severity) {
-      case "CRITICAL":
-        return <Badge variant="solid" color="error" size="sm">Urgence Critique</Badge>;
-      case "WARNING":
-        return <Badge variant="light" color="warning" size="sm">Important</Badge>;
-      case "INFO":
-        return <Badge variant="light" color="info" size="sm">Information</Badge>;
-    }
-  };
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    const [alertsData, membersData] = await Promise.all([
+      membersService.getAlerts(currentCampusId),
+      membersService.getMembers(currentCampusId),
+    ]);
+    setAlerts(alertsData);
+    setMembers(membersData);
+    setIsLoading(false);
+  }, [currentCampusId]);
 
-  const getStatusBadge = (status: AlertStatus) => {
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const filtered = alerts.filter((a) =>
+    statusFilter === "all" ? true : a.status === statusFilter
+  );
+
+  const getStatusBadge = (status: ApiPastoralAlert["status"]) => {
     switch (status) {
       case "OPEN":
-        return <Badge variant="light" color="warning" size="sm">En attente</Badge>;
-      case "ASSIGNED":
-        return <Badge variant="light" color="primary" size="sm">Pris en charge</Badge>;
+        return <Badge variant="light" color="error" size="sm">Ouvert</Badge>;
+      case "IN_PROGRESS":
+        return <Badge variant="light" color="warning" size="sm">En cours</Badge>;
       case "RESOLVED":
-        return <Badge variant="light" color="success" size="sm">Visité / Résolu</Badge>;
+        return <Badge variant="light" color="success" size="sm">Résolu</Badge>;
+      default:
+        return <Badge variant="light" color="light" size="sm">{status}</Badge>;
     }
   };
 
-  const getTypeIcon = (type: AlertType) => {
-    switch (type) {
-      case "SANTE":
-        return <HeartPulse className="w-4 h-4 text-error-500" />;
-      case "DEUIL":
-        return <AlertTriangle className="w-4 h-4 text-gray-700 dark:text-gray-300" />;
-      case "DECROCHAGE":
-        return <UserX className="w-4 h-4 text-warning-500" />;
-      case "AIDE_MATERIELLE":
-        return <HeartHandshake className="w-4 h-4 text-brand-500" />;
-    }
-  };
-
-  const updateAlertStatus = (id: string, newStatus: AlertStatus) => {
-    setAlerts((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
-    );
-  };
-
-  const handleCreateAlert = (e: React.FormEvent) => {
+  const handleCreateAlert = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newAlert: PastoralAlert = {
-      id: `alt-${Date.now().toString().slice(-4)}`,
-      member_name: newMember,
-      member_phone: newPhone,
-      residential_area: newArea,
-      campus_id: currentCampusId === "all" ? "campus-mpita-hq" : currentCampusId,
-      alert_type: newType,
-      severity: newSeverity,
-      description: newDesc,
-      reported_by_name: currentUser ? `${currentUser.title || ""} ${currentUser.last_name || ""}`.trim() : "Fidèle Anonyme",
-      assigned_pastor_name: "Pasteur Alain Kimbembe",
-      status: "OPEN",
-      created_at: new Date().toISOString().replace("T", " ").slice(0, 16),
-    };
-    setAlerts([newAlert, ...alerts]);
-    setIsNewAlertOpen(false);
-    setNewMember("");
-    setNewPhone("");
-    setNewDesc("");
+    if (!selectedMemberId || !newTitle.trim() || !newDesc.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await membersService.createAlert({
+        member: Number(selectedMemberId),
+        title: newTitle.trim(),
+        description: newDesc.trim(),
+        campus: Number(resolvedCampusId),
+      });
+      setIsNewAlertOpen(false);
+      setSelectedMemberId("");
+      setNewTitle("");
+      setNewDesc("");
+      await loadData();
+    } catch (err) {
+      console.error("Erreur création alerte:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const handleStatusChange = async (alert: ApiPastoralAlert, nextStatus: "IN_PROGRESS" | "RESOLVED") => {
+    try {
+      const payload: Record<string, any> = { status: nextStatus };
+      if (nextStatus === "IN_PROGRESS" && currentUser?.id) {
+        payload.assigned_pastor = Number(currentUser.id);
+      }
+      if (nextStatus === "RESOLVED") {
+        payload.resolved_at = new Date().toISOString();
+      }
+      await membersService.updateAlert(alert.id, payload);
+      await loadData();
+    } catch (err) {
+      console.error("Erreur mise à jour alerte:", err);
+    }
+  };
+
+  const openCount = alerts.filter((a) => a.status === "OPEN").length;
+  const inProgressCount = alerts.filter((a) => a.status === "IN_PROGRESS").length;
+  const resolvedCount = alerts.filter((a) => a.status === "RESOLVED").length;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Console des Alertes Pastorales"
-        description="Prise en charge des urgences hospitalières, deuils familiaux, soutien social et décrochages de culte"
+        title="Alertes Pastorales & Cas Sociaux"
+        description="Suivi des urgences, visites pastorales, décrochages et accompagnement social"
         breadcrumbs={[{ label: "Alertes Pastorales" }]}
         action={
-          <Button variant="destructive" size="default" onClick={() => setIsNewAlertOpen(true)}>
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Déclarer une Alerte
-          </Button>
+          hasPermission("creer") ? (
+            <Button variant="default" size="default" onClick={() => setIsNewAlertOpen(true)}>
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Nouvelle Alerte
+            </Button>
+          ) : undefined
         }
       />
 
-      {/* Filter bar */}
-      <div className="flex items-center gap-2 text-xs text-gray-500 bg-white dark:bg-gray-800 p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-theme-xs">
-        <span className="font-semibold px-2">Filtrer par statut :</span>
-        <button
-          onClick={() => setStatusFilter("all")}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
-            statusFilter === "all" ? "bg-brand-50 text-brand-600 font-bold dark:bg-brand-500/15" : ""
-          }`}
-        >
-          Toutes
-        </button>
-        <button
-          onClick={() => setStatusFilter("OPEN")}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
-            statusFilter === "OPEN" ? "bg-warning-50 text-warning-600 font-bold dark:bg-warning-500/15" : ""
-          }`}
-        >
-          En attente
-        </button>
-        <button
-          onClick={() => setStatusFilter("ASSIGNED")}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
-            statusFilter === "ASSIGNED" ? "bg-brand-50 text-brand-600 font-bold dark:bg-brand-500/15" : ""
-          }`}
-        >
-          Prises en charge
-        </button>
-        <button
-          onClick={() => setStatusFilter("RESOLVED")}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
-            statusFilter === "RESOLVED" ? "bg-success-50 text-success-600 font-bold dark:bg-success-500/15" : ""
-          }`}
-        >
-          Résolues / Visitées
-        </button>
+      {/* Summary Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] flex items-center justify-between">
+          <div>
+            <span className="text-xs text-gray-500 block">Alertes Ouvertes</span>
+            <span className="text-2xl font-bold text-error-600">{openCount}</span>
+          </div>
+          <ShieldAlert className="w-6 h-6 text-error-500" />
+        </div>
+        <div className="p-4 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] flex items-center justify-between">
+          <div>
+            <span className="text-xs text-gray-500 block">En Cours de Traitement</span>
+            <span className="text-2xl font-bold text-warning-600">{inProgressCount}</span>
+          </div>
+          <Clock className="w-6 h-6 text-warning-500" />
+        </div>
+        <div className="p-4 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] flex items-center justify-between">
+          <div>
+            <span className="text-xs text-gray-500 block">Résolues</span>
+            <span className="text-2xl font-bold text-success-600">{resolvedCount}</span>
+          </div>
+          <CheckCircle2 className="w-6 h-6 text-success-500" />
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        {[
+          { key: "all", label: "Toutes" },
+          { key: "OPEN", label: "Ouvertes" },
+          { key: "IN_PROGRESS", label: "En cours" },
+          { key: "RESOLVED", label: "Résolues" },
+        ].map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setStatusFilter(f.key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              statusFilter === f.key
+                ? "bg-brand-600 text-white"
+                : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-800"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
       {/* Alerts Table */}
       <TableContainer>
         <TableHead>
-          <TableHeaderCell>Sujet & Type</TableHeaderCell>
-          <TableHeaderCell>Fidèle & Coordonnées</TableHeaderCell>
-          <TableHeaderCell>Sévérité</TableHeaderCell>
-          <TableHeaderCell>Détail de la Situation</TableHeaderCell>
-          <TableHeaderCell>Pasteur Assigné</TableHeaderCell>
+          <TableHeaderCell>Fidèle concerné</TableHeaderCell>
+          <TableHeaderCell>Motif / Alerte</TableHeaderCell>
+          <TableHeaderCell>Pasteur / Référent</TableHeaderCell>
           <TableHeaderCell>Statut</TableHeaderCell>
-          <TableHeaderCell className="text-right">Action Pastorale</TableHeaderCell>
+          <TableHeaderCell>Date</TableHeaderCell>
+          <TableHeaderCell className="text-right">Actions</TableHeaderCell>
         </TableHead>
         <TableBody>
-          {filtered.map((alert) => (
-            <TableRow key={alert.id}>
-              {/* Type */}
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 shrink-0">
-                    {getTypeIcon(alert.alert_type)}
-                  </div>
-                  <div>
-                    <span className="font-semibold text-xs text-gray-900 dark:text-white block">
-                      {alert.alert_type === "SANTE"
-                        ? "Urgence Santé"
-                        : alert.alert_type === "DEUIL"
-                        ? "Deuil Familial"
-                        : alert.alert_type === "DECROCHAGE"
-                        ? "Décrochage Culte"
-                        : "Aide Sociale"}
-                    </span>
-                    <span className="text-[10px] text-gray-400">{alert.created_at}</span>
-                  </div>
-                </div>
-              </TableCell>
-
-              {/* Member */}
-              <TableCell>
-                <span className="font-semibold text-xs text-gray-900 dark:text-white block">
-                  {alert.member_name}
-                </span>
-                <span className="text-[11px] text-gray-400 block">{alert.residential_area}</span>
-                <a
-                  href={`tel:${alert.member_phone}`}
-                  className="text-[11px] text-brand-600 hover:underline flex items-center gap-1 mt-0.5"
-                >
-                  <Phone className="w-3 h-3" />
-                  {alert.member_phone}
-                </a>
-              </TableCell>
-
-              {/* Severity */}
-              <TableCell>{getSeverityBadge(alert.severity)}</TableCell>
-
-              {/* Description */}
-              <TableCell>
-                <p className="text-xs text-gray-600 dark:text-gray-300 max-w-sm">
-                  {alert.description}
-                </p>
-                <span className="text-[10px] text-gray-400 mt-1 block">
-                  Signalé par : {alert.reported_by_name}
-                </span>
-              </TableCell>
-
-              {/* Assigned Pastor */}
-              <TableCell>
-                {alert.assigned_pastor_name ? (
-                  <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">
-                    {alert.assigned_pastor_name}
-                  </span>
-                ) : (
-                  <span className="text-xs text-error-500 font-medium">Non assigné</span>
-                )}
-              </TableCell>
-
-              {/* Status */}
-              <TableCell>{getStatusBadge(alert.status)}</TableCell>
-
-              {/* Quick status change */}
-              <TableCell className="text-right">
-                {alert.status === "OPEN" && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="h-8 px-2.5 text-xs"
-                    onClick={() => updateAlertStatus(alert.id, "ASSIGNED")}
-                  >
-                    <UserCheck className="w-3.5 h-3.5 mr-1" />
-                    Prendre en charge
-                  </Button>
-                )}
-                {alert.status === "ASSIGNED" && (
-                  <Button
-                    variant="success"
-                    size="sm"
-                    className="h-8 px-2.5 text-xs"
-                    onClick={() => updateAlertStatus(alert.id, "RESOLVED")}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                    Marquer Visité
-                  </Button>
-                )}
-                {alert.status === "RESOLVED" && (
-                  <span className="text-xs text-gray-400 font-medium">Clôturé</span>
-                )}
+          {isLoading ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-10 text-gray-400">
+                Chargement des alertes pastorales...
               </TableCell>
             </TableRow>
-          ))}
+          ) : filtered.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-10 text-gray-400">
+                Aucune alerte pastorale dans ce périmètre.
+              </TableCell>
+            </TableRow>
+          ) : (
+            filtered.map((alert) => (
+              <TableRow key={alert.id}>
+                <TableCell>
+                  <span className="font-semibold text-xs text-gray-900 dark:text-white">
+                    {alert.member_name || `Membre #${alert.member}`}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <div>
+                    <span className="font-semibold text-xs text-gray-800 dark:text-gray-200 block">
+                      {alert.title}
+                    </span>
+                    <span className="text-[11px] text-gray-500 line-clamp-2">
+                      {alert.description}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <span className="text-xs text-gray-600 dark:text-gray-300">
+                    {alert.assigned_pastor_name || "Non assigné"}
+                  </span>
+                </TableCell>
+                <TableCell>{getStatusBadge(alert.status)}</TableCell>
+                <TableCell>
+                  <span className="text-[11px] text-gray-400">
+                    {new Date(alert.created_at).toLocaleDateString("fr-FR")}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1.5">
+                    {alert.status === "OPEN" && hasPermission("modifier") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStatusChange(alert, "IN_PROGRESS")}
+                      >
+                        Prendre en charge
+                      </Button>
+                    )}
+                    {alert.status !== "RESOLVED" && hasPermission("modifier") && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => handleStatusChange(alert, "RESOLVED")}
+                      >
+                        Résoudre
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </TableContainer>
 
-      {/* New Alert Modal */}
-      {isNewAlertOpen && (
-        <Modal
-          isOpen={isNewAlertOpen}
-          onClose={() => setIsNewAlertOpen(false)}
-          title="Déclarer une Alerte Pastorale d'Urgence"
-          description="Transmission immédiate au collège pastoral pour prise en charge spirituelle ou matérielle"
-        >
-          <form onSubmit={handleCreateAlert} className="space-y-4">
-            <div>
-              <Label htmlFor="memName" required>
-                Nom du fidèle ou de la famille
-              </Label>
-              <Input
-                id="memName"
-                placeholder="Ex: Frère Moïse, Famille Loubaki..."
-                value={newMember}
-                onChange={(e) => setNewMember(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="mPhone" required>
-                  Téléphone / WhatsApp
-                </Label>
-                <Input
-                  id="mPhone"
-                  placeholder="+242 06 000 00 00"
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="mArea" required>
-                  Quartier
-                </Label>
-                <Input
-                  id="mArea"
-                  placeholder="Ex: Mpita, Ngoyo..."
-                  value={newArea}
-                  onChange={(e) => setNewArea(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="aType" required>
-                  Type d'urgence
-                </Label>
-                <Select
-                  id="aType"
-                  value={newType}
-                  onChange={(e) => setNewType(e.target.value as AlertType)}
-                >
-                  <option value="SANTE">Urgence Santé / Hospitalisation</option>
-                  <option value="DEUIL">Deuil Familial</option>
-                  <option value="DECROCHAGE">Décrochage Culte</option>
-                  <option value="AIDE_MATERIELLE">Aide Matérielle & Sociale</option>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="aSev" required>
-                  Degré de gravité
-                </Label>
-                <Select
-                  id="aSev"
-                  value={newSeverity}
-                  onChange={(e) => setNewSeverity(e.target.value as AlertSeverity)}
-                >
-                  <option value="WARNING">Important (Sous 24h)</option>
-                  <option value="CRITICAL">Critique (Visite Immédiate)</option>
-                  <option value="INFO">Information Pastorale</option>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="aDesc" required>
-                Circonstances & Besoins
-              </Label>
-              <Input
-                id="aDesc"
-                placeholder="Décrivez l'état de santé, le lieu d'hospitalisation, le besoin..."
-                value={newDesc}
-                onChange={(e) => setNewDesc(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-              <Button type="button" variant="outline" onClick={() => setIsNewAlertOpen(false)}>
-                Annuler
-              </Button>
-              <Button type="submit" variant="destructive">
-                Diffuser l'alerte
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+      {/* Modal Nouvelle Alerte */}
+      <Modal
+        isOpen={isNewAlertOpen}
+        onClose={() => setIsNewAlertOpen(false)}
+        title="Signaler une Alerte Pastorale"
+        description="Notifier l'équipe pastorale d'une situation nécessitant un accompagnement"
+      >
+        <form onSubmit={handleCreateAlert} className="space-y-4">
+          <div>
+            <Label required>Fidèle concerné</Label>
+            <Select
+              value={selectedMemberId}
+              onChange={(e) => setSelectedMemberId(e.target.value)}
+              required
+            >
+              <option value="">Sélectionner un membre</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.first_name} {m.last_name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label required>Titre / Motif</Label>
+            <Input
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="Ex: Hospitalisation, Deuil, Absence prolongée..."
+              required
+            />
+          </div>
+          <div>
+            <Label required>Description détaillée</Label>
+            <Textarea
+              rows={3}
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+              placeholder="Précisez la situation et les actions urgentes souhaitées..."
+              required
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setIsNewAlertOpen(false)}>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Enregistrement..." : "Créer l'alerte"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

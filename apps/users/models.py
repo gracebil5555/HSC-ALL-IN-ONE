@@ -73,3 +73,71 @@ class User(AbstractUser):
         title_str = f" - {self.get_ecclesial_function_display()}" if self.ecclesial_function else ""
         return f"{self.get_full_name() or self.username} ({self.get_role_display()}{title_str})"
 
+
+class RoleAssignment(models.Model):
+    """
+    Historique et cumul de mandats datés d'un utilisateur (rôle, département, brigade, délégation d'adjoint).
+    Permet de tracer qui a exercé quelle responsabilité, sur quelle période, et nommé par qui.
+    """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='role_assignments',
+    )
+    campus = models.ForeignKey(
+        'campuses.Campus',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='role_assignments',
+    )
+    role = models.CharField(max_length=30, choices=User.ROLE_CHOICES)
+    ecclesial_function = models.CharField(
+        max_length=40,
+        choices=User.ECCLESIAL_FUNCTION_CHOICES,
+        blank=True,
+    )
+    department = models.ForeignKey(
+        'departments.Department',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='role_assignments',
+    )
+    brigade = models.ForeignKey(
+        'members.Brigade',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='role_assignments',
+    )
+    deputy_of = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='deputy_assignments',
+    )
+    delegated_permissions = models.JSONField(default=list, blank=True)
+    appointed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='appointed_role_assignments',
+    )
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_active', '-start_date', '-created_at']
+        verbose_name = "Affectation de Mandat"
+        verbose_name_plural = "Affectations de Mandats"
+
+    def __str__(self):
+        return f"{self.user.get_full_name() or self.user.username} - {self.role} ({self.start_date})"
+
+

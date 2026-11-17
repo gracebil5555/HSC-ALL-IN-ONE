@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
+import { extractPaginatedResults } from "@/lib/utils";
 
 export interface DepartmentCatalogItem {
   id: number;
@@ -31,8 +32,8 @@ export const departmentsService = {
       if (campusId && campusId !== "all") {
         params.campus_id = campusId;
       }
-      const response = await apiClient.get<DepartmentItem[]>("/departments/", { params });
-      return response.data;
+      const response = await apiClient.get<DepartmentItem[] | { results: DepartmentItem[] }>("/departments/", { params });
+      return extractPaginatedResults(response.data);
     } catch (error) {
       console.warn("Erreur lors de la récupération des départements:", error);
       return [];
@@ -41,8 +42,8 @@ export const departmentsService = {
 
   async getCatalog(): Promise<DepartmentCatalogItem[]> {
     try {
-      const response = await apiClient.get<DepartmentCatalogItem[]>("/departments/catalog/");
-      return response.data;
+      const response = await apiClient.get<DepartmentCatalogItem[] | { results: DepartmentCatalogItem[] }>("/departments/catalog/");
+      return extractPaginatedResults(response.data);
     } catch (error) {
       console.warn("Erreur lors de la récupération du catalogue:", error);
       return [];

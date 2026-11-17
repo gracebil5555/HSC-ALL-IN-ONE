@@ -1,23 +1,22 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Input } from "@/components/ui/Input";
 import { usersService } from "@/services/users.service";
+import {
+  membersService,
+  DEFAULT_ECCLESIAL_FUNCTIONS,
+  DEFAULT_MEMBER_STATUSES,
+} from "@/services/members.service";
+import { departmentsService, DepartmentItem } from "@/services/departments.service";
 import { CurrentUser } from "@/types/auth.types";
 import {
   Users,
   Search,
   Phone,
   MessageCircle,
-  Building2,
-  Shield,
-  Layers,
-  UserCheck,
-  Crown,
-  ChevronRight,
-  ExternalLink,
+  Send,
 } from "lucide-react";
 
 interface OrganizationalContactsProps {
@@ -29,16 +28,40 @@ export const OrganizationalContacts: React.FC<OrganizationalContactsProps> = ({
   campusId,
   isGlobalScope,
 }) => {
-  const [contacts, setContacts] = useState<CurrentUser[]>([]);
+  const [contacts, setContacts] = useState<(CurrentUser & { status?: string; status_display?: string; department_name?: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("ALL");
+  const [functionFilter, setFunctionFilter] = useState<string>("ALL");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  const [ecclesialFunctions, setEcclesialFunctions] = useState(DEFAULT_ECCLESIAL_FUNCTIONS);
+  const [memberStatuses, setMemberStatuses] = useState(DEFAULT_MEMBER_STATUSES);
+  const [departments, setDepartments] = useState<DepartmentItem[]>([]);
+
+  useEffect(() => {
+    membersService.getEcclesialFunctions().then((items) => {
+      if (items.length > 0) setEcclesialFunctions(items.map((i) => ({ code: i.code, label: i.label })));
+    });
+    membersService.getMemberStatuses().then((items) => {
+      if (items.length > 0) setMemberStatuses(items.map((i) => ({ code: i.code, label: i.label, color: i.color })));
+    });
+  }, []);
+
+  useEffect(() => {
+    departmentsService.getDepartments(campusId).then(setDepartments);
+  }, [campusId]);
 
   useEffect(() => {
     async function fetchContacts() {
       setIsLoading(true);
       try {
-        const data = await usersService.getContacts(campusId);
+        const data = await usersService.getContacts(campusId, {
+          ecclesial_function: functionFilter,
+          department_id: departmentFilter,
+          status: statusFilter,
+        });
         setContacts(data);
       } catch (e) {
         console.error("Erreur chargement contacts:", e);
@@ -47,17 +70,17 @@ export const OrganizationalContacts: React.FC<OrganizationalContactsProps> = ({
       }
     }
     fetchContacts();
-  }, [campusId]);
+  }, [campusId, functionFilter, departmentFilter, statusFilter]);
 
   const filteredContacts = contacts.filter((c) => {
     const q = search.toLowerCase().trim();
     const matchesSearch =
       !q ||
-      c.first_name.toLowerCase().includes(q) ||
-      c.last_name.toLowerCase().includes(q) ||
+      (c.first_name || "").toLowerCase().includes(q) ||
+      (c.last_name || "").toLowerCase().includes(q) ||
       (c.title && c.title.toLowerCase().includes(q)) ||
       (c.phone && c.phone.includes(q)) ||
-      c.ecclesial_function.toLowerCase().includes(q);
+      (c.ecclesial_function || "").toLowerCase().includes(q);
 
     if (!matchesSearch) return false;
 
@@ -65,7 +88,8 @@ export const OrganizationalContacts: React.FC<OrganizationalContactsProps> = ({
       return c.ecclesial_function === "PASTEUR" || c.ecclesial_function === "APOTRE";
     }
     if (activeFilter === "RESPONSABLES") {
-      return c.role === "ADMIN_DEPT" || c.ecclesial_function === "RESPONSABLE";
+      const fn = (c.ecclesial_function as string) || "";
+      return c.role === "ADMIN_DEPT" || fn === "RESPONSABLE" || fn === "RESPONSABLE_DEPT";
     }
     if (activeFilter === "ADJOINTS") {
       return c.is_deputy || c.role === "ADJOINT";
@@ -90,7 +114,7 @@ export const OrganizationalContacts: React.FC<OrganizationalContactsProps> = ({
               Carnet de Contacts
             </h3>
             <p className="text-[11px] text-gray-400">
-              {isGlobalScope ? "Personnes clés du réseau mondial" : "Responsables & Serviteurs du campus"}
+              {isGlobalScope ? "Personnes clés du réseau mondial" : "Responsables, Officiers & Membres du campus"}
             </p>
           </div>
         </div>
@@ -100,16 +124,52 @@ export const OrganizationalContacts: React.FC<OrganizationalContactsProps> = ({
       </div>
 
       {/* Barre de recherche */}
-      <div className="pt-3 pb-2">
+      <div className="pt-3 pb-2 space-y-2">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
-            placeholder="Rechercher (pasteur, responsable...)"
+            placeholder="Rechercher (nom, fonction, téléphone...)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full h-8 pl-8 pr-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900 focus:outline-hidden focus:border-brand-500"
           />
+        </div>
+
+        {/* Filtres avancés : Fonction ecclésiale, Département, Statut */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+          <select
+            value={functionFilter}
+            onChange={(e) => setFunctionFilter(e.target.value)}
+            className="h-7 px-2 text-[11px] rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+          >
+            <option value="ALL">Fonction : Toutes</option>
+            {ecclesialFunctions.map((f) => (
+              <option key={f.code} value={f.code}>{f.label}</option>
+            ))}
+          </select>
+
+          <select
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            className="h-7 px-2 text-[11px] rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+          >
+            <option value="ALL">Dépt : Tous</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-7 px-2 text-[11px] rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+          >
+            <option value="ALL">Statut : Tous</option>
+            {memberStatuses.map((s) => (
+              <option key={s.code} value={s.code}>{s.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -150,7 +210,6 @@ export const OrganizationalContacts: React.FC<OrganizationalContactsProps> = ({
                 key={contact.id}
                 className="py-2.5 flex items-center justify-between gap-3 hover:bg-gray-50/70 dark:hover:bg-white/[0.02] rounded-lg px-2 transition-colors"
               >
-                {/* Avatar & Infos */}
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 rounded-lg overflow-hidden bg-brand-100 dark:bg-brand-900/40 border border-brand-200 dark:border-brand-800 shrink-0 flex items-center justify-center font-bold text-brand-700 dark:text-brand-300 text-xs">
                     {contact.avatar ? (
@@ -170,6 +229,12 @@ export const OrganizationalContacts: React.FC<OrganizationalContactsProps> = ({
                       <span className="text-brand-600 dark:text-brand-400 font-medium">
                         {contact.ecclesial_function_display || contact.ecclesial_function}
                       </span>
+                      {contact.department_name && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate">{contact.department_name}</span>
+                        </>
+                      )}
                       {contact.campus_name && (
                         <>
                           <span>•</span>
@@ -180,8 +245,18 @@ export const OrganizationalContacts: React.FC<OrganizationalContactsProps> = ({
                   </div>
                 </div>
 
-                {/* Boutons d'action : Appel & WhatsApp */}
                 <div className="flex items-center gap-1 shrink-0">
+                  <Link
+                    href={`/communications?recipient=${encodeURIComponent(
+                      `${contact.first_name || ""} ${contact.last_name || ""}`.trim()
+                    )}${contact.phone ? `&phone=${encodeURIComponent(contact.phone)}` : ""}${
+                      (contact as any).department_id ? `&department_id=${(contact as any).department_id}` : ""
+                    }`}
+                    title="Message HSC (Communication)"
+                    className="p-1.5 rounded-md text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </Link>
                   {contact.phone ? (
                     <>
                       <a

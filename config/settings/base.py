@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'apps.assimilation',
     'apps.directory',
     'apps.ai_engine',
+    'apps.communications',
 ]
 
 AUTH_USER_MODEL = 'users.User'
@@ -81,6 +82,19 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PAGINATION_CLASS': 'apps.core.pagination.StandardResultsSetPagination',
+    'PAGE_SIZE': 50,
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': os.getenv('DRF_THROTTLE_ANON', '60/minute'),
+        'user': os.getenv('DRF_THROTTLE_USER', '300/minute'),
+        'login': os.getenv('DRF_THROTTLE_LOGIN', '10/minute'),
+        'communications': os.getenv('DRF_THROTTLE_COMMUNICATIONS', '30/minute'),
+    },
 }
 
 # Swagger/OpenAPI Configuration

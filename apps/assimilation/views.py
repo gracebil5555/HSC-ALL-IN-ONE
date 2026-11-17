@@ -5,9 +5,16 @@ from .models import AssimilationProfile, ClassSession, BaptismInterview
 from .serializers import AssimilationProfileSerializer, ClassSessionSerializer, BaptismInterviewSerializer
 
 class AssimilationProfileViewSet(RoleFilterMixin, viewsets.ModelViewSet):
-    queryset = AssimilationProfile.objects.all().order_by('-started_at')
+    queryset = AssimilationProfile.objects.select_related("campus", "member").all().order_by('-started_at')
     serializer_class = AssimilationProfileSerializer
     permission_classes = [IsAuthenticated, IsAdjointOrAbove, AdjointCanPerformAction]
+
+    def perform_create(self, serializer):
+        member = serializer.validated_data.get("member")
+        if member and member.campus_id and not serializer.validated_data.get("campus"):
+            serializer.save(campus_id=member.campus_id)
+            return
+        super().perform_create(serializer)
 
 class ClassSessionViewSet(RoleFilterMixin, viewsets.ModelViewSet):
     queryset = ClassSession.objects.all().order_by('-date')

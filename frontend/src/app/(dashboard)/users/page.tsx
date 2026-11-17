@@ -35,11 +35,14 @@ import {
   ChevronRight,
   Phone,
   Mail,
+  Settings2,
 } from "lucide-react";
 import { useTenant } from "@/context/TenantContext";
 import { useRole } from "@/hooks/useRole";
 import { usersService } from "@/services/users.service";
+import { membersService, DEFAULT_ECCLESIAL_FUNCTIONS } from "@/services/members.service";
 import { CreateUserModal } from "@/components/users/CreateUserModal";
+import { CatalogConfigModal } from "@/components/users/CatalogConfigModal";
 import { CurrentUser, UserRole, EcclesialFunction, GRANULAR_PERMISSIONS, OPERATIONAL_PROFILES, OperationalProfile } from "@/types/auth.types";
 
 const ROLE_OPTIONS: { value: UserRole; label: string; desc: string }[] = [
@@ -48,21 +51,6 @@ const ROLE_OPTIONS: { value: UserRole; label: string; desc: string }[] = [
   { value: "ADMIN_DEPT", label: "Admin Département", desc: "Responsable titulaire d'une structure interne" },
   { value: "ADJOINT", label: "Adjoint (Délégué)", desc: "Adjoint recevant des permissions spécifiques" },
   { value: "MEMBRE", label: "Membre / Ouvrier", desc: "Fidèle membre actif de l'église" },
-];
-
-const ECCLESIAL_FUNCTIONS: { value: EcclesialFunction; label: string }[] = [
-  { value: "APOTRE", label: "Apôtre" },
-  { value: "PASTEUR", label: "Pasteur" },
-  { value: "ANCIEN", label: "Ancien" },
-  { value: "DIACRE", label: "Diacre" },
-  { value: "EVANGELISTE", label: "Évangéliste" },
-  { value: "DOCTEUR", label: "Docteur" },
-  { value: "PROPHETE", label: "Prophète" },
-  { value: "BERGER", label: "Berger" },
-  { value: "RESPONSABLE", label: "Responsable de Département" },
-  { value: "ADJOINT_DEPT", label: "Adjoint de Département" },
-  { value: "OUVRIER", label: "Ouvrier" },
-  { value: "FIDELE", label: "Fidèle" },
 ];
 
 export default function UsersManagementPage() {
@@ -74,7 +62,16 @@ export default function UsersManagementPage() {
     isAdminDept,
     canManageUsers,
     canAssignDeputy,
+    hasPermission,
   } = useRole();
+
+  const ROLE_RANK: Record<string, number> = {
+    MEMBRE: 1,
+    ADJOINT: 2,
+    ADMIN_DEPT: 3,
+    SUPER_ADMIN: 4,
+    SUPER_SUPER_ADMIN: 5,
+  };
 
   // Hiérarchie MVC / RBAC stricte :
   // - Seul le Super Super Admin peut nommer un Super Admin (Pasteur d'extension / église)
@@ -86,6 +83,7 @@ export default function UsersManagementPage() {
   });
 
   const [users, setUsers] = useState<CurrentUser[]>([]);
+  const [ecclesialFunctions, setEcclesialFunctions] = useState<{ code: string; label: string }[]>(DEFAULT_ECCLESIAL_FUNCTIONS);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filtres
@@ -95,6 +93,7 @@ export default function UsersManagementPage() {
 
   // Modal Création Utilisateur (basé sur la Matrice RBAC du Dossier d'Architecture)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
 
   // Modal Assignation Adjoint (Section 7 & 15)
   const [isDeputyModalOpen, setIsDeputyModalOpen] = useState(false);
@@ -119,15 +118,23 @@ export default function UsersManagementPage() {
     loadUsers();
   }, [currentCampusId, roleFilter]);
 
+  useEffect(() => {
+    membersService.getEcclesialFunctions().then((items) => {
+      if (items.length > 0) {
+        setEcclesialFunctions(items.map((i) => ({ code: i.code, label: i.label })));
+      }
+    });
+  }, []);
+
   // Filtrage local
   const filteredUsers = users.filter((u) => {
     const q = search.toLowerCase().trim();
     const matchesSearch =
       !q ||
-      u.first_name.toLowerCase().includes(q) ||
-      u.last_name.toLowerCase().includes(q) ||
-      u.username.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
+      (u.first_name || "").toLowerCase().includes(q) ||
+      (u.last_name || "").toLowerCase().includes(q) ||
+      (u.username || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
       (u.phone && u.phone.includes(q));
 
     const matchesFunction = functionFilter === "ALL" || u.ecclesial_function === functionFilter;
@@ -234,7 +241,17 @@ export default function UsersManagementPage() {
         title="Portail des Comptes & Gouvernance"
         description="Gestion hiérarchique des utilisateurs, des rôles techniques RBAC et du système de délégation d'adjoints."
         action={
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {isSuperSuperAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCatalogModalOpen(true)}
+              >
+                <Settings2 className="w-4 h-4 mr-1.5 text-brand-600" />
+                Fonctions & Statuts
+              </Button>
+            )}
             {canAssignDeputy && (
               <Button
                 variant="outline"
@@ -358,8 +375,8 @@ export default function UsersManagementPage() {
               className="h-9 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
             >
               <option value="ALL">Toutes les Fonctions Ecclésiales</option>
-              {ECCLESIAL_FUNCTIONS.map((f) => (
-                <option key={f.value} value={f.value}>
+              {ecclesialFunctions.map((f) => (
+                <option key={f.code} value={f.code}>
                   {f.label}
                 </option>
               ))}
@@ -475,36 +492,47 @@ export default function UsersManagementPage() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       {/* Assigner comme adjoint d'un titulaire */}
-                      <button
-                        onClick={() => {
-                          setSelectedTitulaire(u);
-                          setIsDeputyModalOpen(true);
-                        }}
-                        title="Désigner un adjoint pour ce responsable"
-                        className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-800 text-gray-600 hover:text-brand-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5 transition-colors"
-                      >
-                        <UserCheck className="w-3.5 h-3.5" />
-                      </button>
+                      {canAssignDeputy &&
+                        (!isAdminDept || String(u.id) === String(currentUser?.id)) &&
+                        (isSuperSuperAdmin || u.role !== "SUPER_SUPER_ADMIN") && (
+                          <button
+                            onClick={() => {
+                              setSelectedTitulaire(u);
+                              setIsDeputyModalOpen(true);
+                            }}
+                            title="Désigner un adjoint pour ce responsable"
+                            className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-800 text-gray-600 hover:text-brand-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5 transition-colors"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                          </button>
+                        )}
 
                       {/* Révoquer si c'est un adjoint */}
-                      {u.is_deputy && (
-                        <button
-                          onClick={() => handleRevokeDeputy(u.id)}
-                          title="Révoquer la fonction d'adjoint"
-                          className="p-1.5 rounded-lg border border-amber-200 text-amber-600 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-500/10 transition-colors"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      {canAssignDeputy &&
+                        u.is_deputy &&
+                        (!isAdminDept || String(u.deputy_of) === String(currentUser?.id)) && (
+                          <button
+                            onClick={() => handleRevokeDeputy(u.id)}
+                            title="Révoquer la fonction d'adjoint"
+                            className="p-1.5 rounded-lg border border-amber-200 text-amber-600 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-500/10 transition-colors"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
 
                       {/* Supprimer */}
-                      <button
-                        onClick={() => handleDeleteUser(u.id, `${u.first_name} ${u.last_name}`)}
-                        title="Supprimer l'accès"
-                        className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-800 text-gray-400 hover:text-error-600 hover:bg-error-50 dark:hover:bg-error-500/10 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {isSuperAdminOrAbove &&
+                        hasPermission("supprimer") &&
+                        String(u.id) !== String(currentUser?.id) &&
+                        (isSuperSuperAdmin || (u.role !== "SUPER_SUPER_ADMIN" && u.role !== "SUPER_ADMIN")) && (
+                          <button
+                            onClick={() => handleDeleteUser(u.id, `${u.first_name} ${u.last_name}`)}
+                            title="Supprimer l'accès"
+                            className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-800 text-gray-400 hover:text-error-600 hover:bg-error-50 dark:hover:bg-error-500/10 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -547,7 +575,14 @@ export default function UsersManagementPage() {
             >
               <option value="">-- Choisir un membre ou serviteur --</option>
               {users
-                .filter((u) => u.id !== selectedTitulaire?.id)
+                .filter(
+                  (u) =>
+                    u.id !== selectedTitulaire?.id &&
+                    (ROLE_RANK[u.role] ?? 0) < (ROLE_RANK[selectedTitulaire?.role || ""] ?? 0) &&
+                    (selectedTitulaire?.role === "SUPER_SUPER_ADMIN" ||
+                      !selectedTitulaire?.campus_id ||
+                      String(u.campus_id) === String(selectedTitulaire.campus_id))
+                )
                 .map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.first_name} {u.last_name} ({u.ecclesial_function_display || u.ecclesial_function} - {u.role})
@@ -605,6 +640,19 @@ export default function UsersManagementPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Modal Configuration Fonctions Ecclésiales & Statuts (SSA) */}
+      <CatalogConfigModal
+        isOpen={isCatalogModalOpen}
+        onClose={() => setIsCatalogModalOpen(false)}
+        onUpdated={() => {
+          membersService.getEcclesialFunctions().then((items) => {
+            if (items.length > 0) {
+              setEcclesialFunctions(items.map((i) => ({ code: i.code, label: i.label })));
+            }
+          });
+        }}
+      />
     </div>
   );
 }

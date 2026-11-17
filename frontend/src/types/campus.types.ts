@@ -7,6 +7,7 @@ export interface Campus {
   campus_type: CampusType;
   country: string;
   city: string;
+  currency?: string;
   address?: string;
   parent?: string | number | null;
   lead_pastor_name: string;

@@ -22,6 +22,9 @@ import {
   X,
   Package,
   Layers,
+  MessageSquare,
+  ArrowLeftRight,
+  FileText,
 } from "lucide-react";
 
 interface MenuItem {
@@ -55,7 +58,13 @@ export const Sidebar: React.FC = () => {
     isChoraleDept,
     isAccueilSocialSecDept,
     isBrigadeDept,
+    departmentCodes,
+    hasPermission,
   } = useRole();
+  const canViewCommunications =
+    (isSuperAdminOrAbove ||
+      departmentCodes.some((c) => ["ACCUEIL", "SECRETARIAT", "COMMUNICATION"].includes(c))) &&
+    hasPermission("voir");
   const pathname = usePathname();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
@@ -93,6 +102,12 @@ export const Sidebar: React.FC = () => {
           visible: canViewMembers,
         },
         {
+          name: "Transferts Inter-Églises",
+          path: "/members/transfers",
+          icon: <ArrowLeftRight className="w-5 h-5" />,
+          visible: (isSuperAdminOrAbove || isAccueilSocialSecDept) && hasPermission("voir"),
+        },
+        {
           name: "Pipeline d'Assimilation",
           path: "/assimilation",
           icon: <GitMerge className="w-5 h-5" />,
@@ -111,6 +126,13 @@ export const Sidebar: React.FC = () => {
           icon: <UserCheck className="w-5 h-5" />,
           badge: isSSA ? "Réseau" : "Adjoints",
           visible: isSuperAdminOrAbove || isAdminDept,
+        },
+        {
+          name: "Journal d'Audit",
+          path: "/audit-logs",
+          icon: <FileText className="w-5 h-5" />,
+          badge: "Immuable",
+          visible: isSuperAdminOrAbove && hasPermission("voir"),
         },
       ],
     },
@@ -136,6 +158,7 @@ export const Sidebar: React.FC = () => {
           subItems: [
             { name: "Pièces de Caisse", path: "/finances/vouchers" },
             { name: "Journal Financier", path: "/finances/journal" },
+            { name: "Taux & Clôtures", path: "/finances/governance" },
           ],
         },
       ],
@@ -154,6 +177,13 @@ export const Sidebar: React.FC = () => {
           path: "/alerts",
           icon: <ShieldAlert className="w-5 h-5" />,
           visible: canViewAlerts,
+        },
+        {
+          name: "SMS & WhatsApp",
+          path: "/communications",
+          icon: <MessageSquare className="w-5 h-5" />,
+          badge: "Marketing",
+          visible: canViewCommunications,
         },
       ],
     },
@@ -315,6 +345,12 @@ export const Sidebar: React.FC = () => {
                           : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
                       }`}
                     >
+                      {isActive && (
+                        <span
+                          className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r-full bg-hsc-orange-500"
+                          aria-hidden="true"
+                        />
+                      )}
                       <span className="shrink-0">{item.icon}</span>
                       {showExpanded && (
                         <div className="flex-1 flex items-center justify-between">

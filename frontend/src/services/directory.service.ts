@@ -1,11 +1,12 @@
 import { apiClient } from "@/lib/apiClient";
+import { extractPaginatedResults } from "@/lib/utils";
 import { BusinessProfile } from "@/types/directory.types";
 
 export const directoryService = {
   async getBusinesses(campusId?: string | null): Promise<BusinessProfile[]> {
     try {
-      const response = await apiClient.get<BusinessProfile[]>("/directory/businesses/");
-      let data = response.data;
+      const response = await apiClient.get<BusinessProfile[] | { results: BusinessProfile[] }>("/directory/businesses/");
+      let data = extractPaginatedResults(response.data);
       if (campusId && campusId !== "all") {
         data = data.filter((b) => b.campus === parseInt(campusId));
       }

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTenant } from "@/context/TenantContext";
+import { useRole } from "@/hooks/useRole";
 import { CampusSelector } from "@/components/layout/CampusSelector";
 import { authService } from "@/services/auth.service";
 import {
@@ -32,6 +33,8 @@ export const Header: React.FC = () => {
   const { isExpanded, toggleExpanded, toggleMobileOpen } = useSidebar();
   const { theme, toggleTheme } = useTheme();
   const { currentUser } = useTenant();
+  const { isSuperSuperAdmin, isSuperAdminOrAbove, canManageUsers } = useRole();
+  const isSuperAdmin = isSuperAdminOrAbove;
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isUserOpen, setIsUserOpen] = useState(false);
@@ -56,9 +59,6 @@ export const Header: React.FC = () => {
     authService.logout();
     window.location.href = "/login";
   };
-
-  const isSuperSuperAdmin = currentUser?.role === "SUPER_SUPER_ADMIN";
-  const isSuperAdmin = currentUser?.role === "SUPER_ADMIN" || isSuperSuperAdmin;
 
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between h-18 px-4 lg:px-8 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 transition-colors">
@@ -91,7 +91,7 @@ export const Header: React.FC = () => {
           <input
             type="text"
             placeholder="Rechercher un membre, une brigade, une transaction..."
-            className="w-full h-10 pl-10 pr-4 text-xs bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60 rounded-xl text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
+            className="w-full h-10 pl-10 pr-4 text-xs bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60 rounded-xl text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-hsc-orange-500/20 focus:border-brand-500 transition-all"
           />
         </div>
       </div>
@@ -99,7 +99,7 @@ export const Header: React.FC = () => {
       {/* Right Actions: Theme, Notifications, User */}
       <div className="flex items-center gap-2">
         {/* Direct Action: Créer / Gérer les Comptes (Admins) */}
-        {isSuperAdmin && (
+        {canManageUsers && (
           <Link
             href="/users"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-theme-xs transition-colors shrink-0"

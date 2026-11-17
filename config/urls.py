@@ -7,6 +7,10 @@ from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
+
+class ThrottledTokenObtainPairView(TokenObtainPairView):
+    throttle_scope = 'login'
+
 def root_api_index(request):
     """
     Page d'accueil de l'API pour éviter le 404 lorsque l'utilisateur visite la racine.
@@ -38,7 +42,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     
     # API endpoints
-    path('api/v1/auth/jwt/create/', TokenObtainPairView.as_view(), name='jwt-create'),
+    path('api/v1/auth/jwt/create/', ThrottledTokenObtainPairView.as_view(), name='jwt-create'),
     path('api/v1/auth/jwt/refresh/', TokenRefreshView.as_view(), name='jwt-refresh'),
     path('api/v1/', include('config.api_router')),
 

@@ -41,12 +41,9 @@ def _effective_role(user):
     """
     if not user or not user.is_authenticated:
         return None
-    role = getattr(user, "role", None)
-    if role in ("SUPER_SUPER_ADMIN", "SUPER_ADMIN", "ADMIN_DEPT"):
-        return role
     if getattr(user, "is_deputy", False) and getattr(user, "deputy_of_id", None):
         return getattr(user.deputy_of, "role", "ADJOINT")
-    return role
+    return getattr(user, "role", None)
 
 
 def _effective_campus_id(user):

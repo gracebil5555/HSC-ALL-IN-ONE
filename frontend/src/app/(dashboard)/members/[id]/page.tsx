@@ -102,8 +102,8 @@ export default function MemberDetailPage() {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center font-bold text-xl text-brand-600">
-                  {member.first_name[0]}
-                  {member.last_name[0]}
+                  {member.first_name?.[0] || ""}
+                  {member.last_name?.[0] || ""}
                 </div>
               )}
             </div>
@@ -128,33 +128,37 @@ export default function MemberDetailPage() {
               <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                 <span className="flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                  {member.residential_area}
+                  {member.residential_area || "Non renseigné"}
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                  Depuis {member.joined_date}
+                  Depuis {member.joined_date || "—"}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <a
-              href={`https://wa.me/${member.whatsapp.replace(/[^0-9]/g, "")}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Button variant="default" className="bg-green-600 hover:bg-green-700 text-white" size="sm">
-                <MessageCircle className="w-4 h-4 mr-1.5" />
-                WhatsApp
-              </Button>
-            </a>
-            <a href={`tel:${member.phone}`}>
-              <Button variant="outline" size="sm">
-                <Phone className="w-4 h-4 mr-1.5" />
-                Appeler
-              </Button>
-            </a>
+            {(member.whatsapp || member.phone) && (
+              <a
+                href={`https://wa.me/${(member.whatsapp || member.phone || "").replace(/[^0-9]/g, "")}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Button variant="default" className="bg-green-600 hover:bg-green-700 text-white" size="sm">
+                  <MessageCircle className="w-4 h-4 mr-1.5" />
+                  WhatsApp
+                </Button>
+              </a>
+            )}
+            {member.phone && (
+              <a href={`tel:${member.phone}`}>
+                <Button variant="outline" size="sm">
+                  <Phone className="w-4 h-4 mr-1.5" />
+                  Appeler
+                </Button>
+              </a>
+            )}
             <Link href="/alerts">
               <Button variant="destructive" size="sm">
                 <AlertTriangle className="w-4 h-4 mr-1.5" />
@@ -172,7 +176,7 @@ export default function MemberDetailPage() {
           <div className="space-y-4 text-xs">
             <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
               <span className="text-gray-500">Campus de rattachement</span>
-              <span className="font-semibold text-gray-900 dark:text-white">Siège Mondial - Mpita</span>
+              <span className="font-semibold text-gray-900 dark:text-white">{(member as any).campus_name || "Campus Local"}</span>
             </div>
 
             <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">

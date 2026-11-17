@@ -23,7 +23,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   iconBgColor = "bg-gray-100 dark:bg-gray-800",
 }) => {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 shadow-theme-xs">
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 shadow-theme-xs transition-colors hover:border-gray-300 dark:hover:border-gray-700">
       <div
         className={`flex items-center justify-center w-12 h-12 rounded-xl ${iconBgColor} text-gray-800 dark:text-white/90`}
       >
@@ -32,8 +32,8 @@ export const StatCard: React.FC<StatCardProps> = ({
 
       <div className="flex items-end justify-between mt-5">
         <div>
-          <span className="text-sm text-gray-500 dark:text-gray-400">{title}</span>
-          <h4 className="mt-1 font-bold text-gray-800 text-title-sm dark:text-white/90">
+          <span className="text-theme-sm text-gray-500 dark:text-gray-400">{title}</span>
+          <h4 className="mt-1 font-bold text-gray-800 text-title-sm tabular-nums dark:text-white/90">
             {value}
           </h4>
           {subtitle && (

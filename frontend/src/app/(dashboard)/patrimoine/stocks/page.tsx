@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useTenant } from "@/context/TenantContext";
+import { useRole } from "@/hooks/useRole";
 import { patrimoineService } from "@/services/patrimoine.service";
 import { StockItem, StockMovement } from "@/types/patrimoine.types";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -24,6 +25,7 @@ import {
 
 export default function StocksPage() {
   const { currentCampusId } = useTenant();
+  const { canManagePatrimoine, hasPermission } = useRole();
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -78,10 +80,12 @@ export default function StocksPage() {
           { label: "Stocks Consommables" },
         ]}
         action={
-          <Button variant="default" size="default" onClick={() => setIsModalOpen(true)}>
-            <Plus className="w-4 h-4 mr-1.5" />
-            Nouveau Mouvement de Stock
-          </Button>
+          canManagePatrimoine && hasPermission("creer") ? (
+            <Button variant="default" size="default" onClick={() => setIsModalOpen(true)}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Nouveau Mouvement de Stock
+            </Button>
+          ) : undefined
         }
       />
 
@@ -155,31 +159,33 @@ export default function StocksPage() {
               </div>
 
               {/* Card Actions */}
-              <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs">
-                <button
-                  onClick={() => {
-                    setSelectedStockId(item.id);
-                    setMovementType("IN");
-                    setIsModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1 font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Entrée
-                </button>
+              {canManagePatrimoine && hasPermission("creer") && (
+                <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs">
+                  <button
+                    onClick={() => {
+                      setSelectedStockId(item.id);
+                      setMovementType("IN");
+                      setIsModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1 font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Entrée
+                  </button>
 
-                <button
-                  onClick={() => {
-                    setSelectedStockId(item.id);
-                    setMovementType("OUT");
-                    setIsModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                  Sortie (Culte)
-                </button>
-              </div>
+                  <button
+                    onClick={() => {
+                      setSelectedStockId(item.id);
+                      setMovementType("OUT");
+                      setIsModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                    Sortie (Culte)
+                  </button>
+                </div>
+              )}
             </Card>
           );
         })}

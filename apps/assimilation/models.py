@@ -3,7 +3,7 @@ from django.conf import settings
 from apps.core.models import TenantBoundModel
 from apps.members.models import Member
 
-class AssimilationProfile(models.Model):
+class AssimilationProfile(TenantBoundModel):
     STAGE_CHOICES = [
         ('CONTACT', 'Contact Initial'),
         ('M1', 'Cours M1'),

@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
+import { extractPaginatedResults } from "@/lib/utils";
 import { CurrentUser, CreateUserPayload, AssignDeputyPayload } from "@/types/auth.types";
 import { MOCK_USERS_LIST } from "@/mocks/campuses.mock";
 
@@ -12,8 +13,8 @@ export const usersService = {
       if (role && role !== "ALL") {
         params.role = role;
       }
-      const response = await apiClient.get<CurrentUser[]>("/users/", { params });
-      return response.data;
+      const response = await apiClient.get<CurrentUser[] | { results: CurrentUser[] }>("/users/", { params });
+      return extractPaginatedResults(response.data);
     } catch (error) {
       console.warn("Utilisation des utilisateurs de secours (fallback mock):", error);
       let list = [...MOCK_USERS_LIST];
@@ -27,14 +28,26 @@ export const usersService = {
     }
   },
 
-  async getContacts(campusId?: string): Promise<CurrentUser[]> {
+  async getContacts(
+    campusId?: string,
+    filters?: { ecclesial_function?: string; department_id?: string; status?: string }
+  ): Promise<CurrentUser[]> {
     try {
       const params: Record<string, string> = {};
       if (campusId && campusId !== "all") {
         params.campus_id = campusId;
       }
-      const response = await apiClient.get<CurrentUser[]>("/users/contacts/", { params });
-      return response.data;
+      if (filters?.ecclesial_function && filters.ecclesial_function !== "ALL") {
+        params.ecclesial_function = filters.ecclesial_function;
+      }
+      if (filters?.department_id && filters.department_id !== "ALL") {
+        params.department_id = filters.department_id;
+      }
+      if (filters?.status && filters.status !== "ALL") {
+        params.status = filters.status;
+      }
+      const response = await apiClient.get<CurrentUser[] | { results: CurrentUser[] }>("/users/contacts/", { params });
+      return extractPaginatedResults(response.data);
     } catch (error) {
       console.warn("Utilisation des contacts de secours (fallback mock):", error);
       let list = [...MOCK_USERS_LIST];

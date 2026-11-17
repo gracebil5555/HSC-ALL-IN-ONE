@@ -25,11 +25,20 @@ import {
   FileText,
   History,
   AlertCircle,
+  Paperclip,
+  ExternalLink,
 } from "lucide-react";
+
+const resolveMediaUrl = (url?: string | null): string | null => {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  const origin = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1").replace(/\/api\/v1\/?$/, "");
+  return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
+};
 
 export default function VouchersPage() {
   const { currentCampusId, currentUser } = useTenant();
-  const { canApproveVouchers, canDisburseVouchers, canManageFinances } = useRole();
+  const { canApproveVouchers, canDisburseVouchers, isAdminOrAbove, hasPermission } = useRole();
   const [vouchers, setVouchers] = useState<CashVoucher[]>([]);
   const [departmentsList, setDepartmentsList] = useState<DepartmentItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -49,6 +58,7 @@ export default function VouchersPage() {
   const [newDepartment, setNewDepartment] = useState("");
   const [newAmount, setNewAmount] = useState<number>(15000);
   const [newPurpose, setNewPurpose] = useState("");
+  const [newReceiptFile, setNewReceiptFile] = useState<File | null>(null);
 
   const loadVouchers = () => {
     setIsLoading(true);
@@ -100,12 +110,14 @@ export default function VouchersPage() {
       department_name: newDepartment,
       amount: Number(newAmount),
       purpose: newPurpose,
-      campus_id: currentCampusId === "all" ? "campus-mpita-hq" : currentCampusId,
+      campus_id: currentCampusId === "all" ? String(currentUser?.campus_id || "") : currentCampusId,
       requested_by_name: requesterName,
+      receipt_file: newReceiptFile,
     });
     setIsNewVoucherModalOpen(false);
     setNewBeneficiary("");
     setNewPurpose("");
+    setNewReceiptFile(null);
     loadVouchers();
   };
 
@@ -113,9 +125,9 @@ export default function VouchersPage() {
     const matchesStatus = statusFilter === "all" ? true : v.status === statusFilter;
     const query = search.toLowerCase();
     const matchesSearch =
-      v.voucher_number.toLowerCase().includes(query) ||
-      v.beneficiary.toLowerCase().includes(query) ||
-      v.purpose.toLowerCase().includes(query);
+      (v.voucher_number || "").toLowerCase().includes(query) ||
+      (v.beneficiary || "").toLowerCase().includes(query) ||
+      (v.purpose || "").toLowerCase().includes(query);
     return matchesStatus && matchesSearch;
   });
 
@@ -134,7 +146,7 @@ export default function VouchersPage() {
   const approvedCount = vouchers.filter((v) => v.status === "APPROVED").length;
   const totalDisbursed = vouchers
     .filter((v) => v.status === "DISBURSED")
-    .reduce((sum, v) => sum + v.amount, 0);
+    .reduce((sum, v) => sum + Number(v.amount || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -146,10 +158,12 @@ export default function VouchersPage() {
           { label: "Pièces de Caisse" },
         ]}
         action={
-          <Button variant="default" size="default" onClick={() => setIsNewVoucherModalOpen(true)}>
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Nouvelle Pièce de Caisse
-          </Button>
+          (isAdminOrAbove && hasPermission("creer")) ? (
+            <Button variant="default" size="default" onClick={() => setIsNewVoucherModalOpen(true)}>
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Nouvelle Pièce de Caisse
+            </Button>
+          ) : undefined
         }
       />
 
@@ -285,12 +299,24 @@ export default function VouchersPage() {
                   <p className="text-xs text-gray-600 dark:text-gray-300 max-w-xs line-clamp-2">
                     {vch.purpose}
                   </p>
+                  {(vch.receipt_file || vch.receipt_attachment) && (
+                    <a
+                      href={resolveMediaUrl(vch.receipt_file || vch.receipt_attachment) || "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-brand-50 text-brand-700 hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-300 transition-colors"
+                    >
+                      <Paperclip className="w-3 h-3" />
+                      Voir justificatif
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  )}
                 </TableCell>
 
                 {/* Amount */}
                 <TableCell>
                   <span className="text-xs font-bold text-gray-900 dark:text-white">
-                    {vch.amount.toLocaleString("fr-FR")} FCFA
+                    {Number(vch.amount || 0).toLocaleString("fr-FR")} FCFA
                   </span>
                 </TableCell>
 
@@ -451,6 +477,23 @@ export default function VouchersPage() {
           description="Traçabilité complète des actions, horodatage et statuts"
         >
           <div className="space-y-4 text-xs">
+            {(selectedVoucherForAudit.receipt_file || selectedVoucherForAudit.receipt_attachment) && (
+              <div className="p-3 rounded-xl bg-brand-50/60 dark:bg-brand-500/10 border border-brand-200 dark:border-brand-800 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-brand-700 dark:text-brand-300 font-medium">
+                  <Paperclip className="w-4 h-4" />
+                  <span>Pièce justificative jointe</span>
+                </div>
+                <a
+                  href={resolveMediaUrl(selectedVoucherForAudit.receipt_file || selectedVoucherForAudit.receipt_attachment) || "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-brand-600 dark:text-brand-400 hover:underline"
+                >
+                  Voir justificatif
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            )}
             <div className="border-l-2 border-brand-500 pl-4 space-y-4 ml-2">
               {selectedVoucherForAudit.audit_trail.map((entry, idx) => (
                 <div key={idx} className="relative">
@@ -555,6 +598,25 @@ export default function VouchersPage() {
                 onChange={(e) => setNewPurpose(e.target.value)}
                 required
               />
+            </div>
+
+            <div>
+              <Label htmlFor="receiptFile">
+                Pièce justificative (Facture / Reçu — Image ou PDF, optionnel)
+              </Label>
+              <input
+                id="receiptFile"
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => setNewReceiptFile(e.target.files?.[0] || null)}
+                className="block w-full text-xs text-gray-600 dark:text-gray-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 dark:file:bg-brand-500/15 dark:file:text-brand-300 border border-gray-200 dark:border-gray-800 rounded-lg p-1.5"
+              />
+              {newReceiptFile && (
+                <p className="text-[11px] text-success-600 mt-1 flex items-center gap-1">
+                  <Paperclip className="w-3 h-3" />
+                  {newReceiptFile.name}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
