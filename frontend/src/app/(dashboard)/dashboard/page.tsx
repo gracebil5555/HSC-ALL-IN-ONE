@@ -347,12 +347,18 @@ function CampusAdminView({
   isLoading: boolean;
   onOpenCreateUser?: () => void;
 }) {
-  const activeDeptsCount = departments.filter((d) => d.is_active).length;
-  const activeBrigadesCount = brigades.filter((b) => b.is_active !== false).length;
-  const campusCredits = transactions.filter((t) => t.entry_type === "CREDIT").reduce((s, t) => s + Number(t.amount || 0), 0);
-  const campusDebits = transactions.filter((t) => t.entry_type === "DEBIT").reduce((s, t) => s + Number(t.amount || 0), 0);
+  const safeDepts = Array.isArray(departments) ? departments : [];
+  const safeBrigades = Array.isArray(brigades) ? brigades : [];
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  const safeAssets = Array.isArray(assets) ? assets : [];
+  const safeVouchers = Array.isArray(vouchers) ? vouchers : [];
+
+  const activeDeptsCount = safeDepts.filter((d) => d?.is_active).length;
+  const activeBrigadesCount = safeBrigades.filter((b) => b?.is_active !== false).length;
+  const campusCredits = safeTransactions.filter((t) => t?.entry_type === "CREDIT").reduce((s, t) => s + Number(t?.amount || 0), 0);
+  const campusDebits = safeTransactions.filter((t) => t?.entry_type === "DEBIT").reduce((s, t) => s + Number(t?.amount || 0), 0);
   const campusBalance = campusCredits - campusDebits;
-  const campusVnc = assets.reduce((s, a) => s + Number(a.net_book_value ?? a.estimated_value ?? 0), 0);
+  const campusVnc = safeAssets.reduce((s, a) => s + Number(a?.net_book_value ?? a?.estimated_value ?? 0), 0);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -413,7 +419,7 @@ function CampusAdminView({
                 <TableHeaderCell>Date</TableHeaderCell>
               </TableHead>
               <TableBody>
-                {vouchers.slice(0, 5).map((vch) => (
+                {safeVouchers.slice(0, 5).map((vch) => (
                   <TableRow key={vch.id}>
                     <TableCell>
                       <span className="font-mono text-xs font-bold text-gray-800 dark:text-white">
@@ -590,12 +596,20 @@ function DeptAdminView({
   isChoraleDept: boolean;
   onOpenDeputyModal?: () => void;
 }) {
+  const safeMembers = Array.isArray(members) ? members : [];
+  const safeVouchers = Array.isArray(vouchers) ? vouchers : [];
+  const safeAssets = Array.isArray(assets) ? assets : [];
+  const safeStocks = Array.isArray(stocks) ? stocks : [];
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  const safeAlerts = Array.isArray(alerts) ? alerts : [];
+  const safeDeptCodes = Array.isArray(departmentCodes) ? departmentCodes : [];
+
   // 1. Mini-Dashboard Financier (Section 9 : Admin Finance)
   if (isFinanceDept) {
-    const totalCredits = transactions.filter((t) => t.entry_type === "CREDIT").reduce((s, t) => s + Number(t.amount || 0), 0);
-    const totalDebits = transactions.filter((t) => t.entry_type === "DEBIT").reduce((s, t) => s + Number(t.amount || 0), 0);
+    const totalCredits = safeTransactions.filter((t) => t?.entry_type === "CREDIT").reduce((s, t) => s + Number(t?.amount || 0), 0);
+    const totalDebits = safeTransactions.filter((t) => t?.entry_type === "DEBIT").reduce((s, t) => s + Number(t?.amount || 0), 0);
     const balance = totalCredits - totalDebits;
-    const pendingCount = vouchers.filter((v) => v.status === "PENDING").length;
+    const pendingCount = safeVouchers.filter((v) => v?.status === "PENDING").length;
 
     return (
       <div className="space-y-6">
@@ -634,7 +648,7 @@ function DeptAdminView({
           >
             {isLoading ? (
               <TableSkeleton rows={4} columns={4} />
-            ) : vouchers.length === 0 ? (
+            ) : safeVouchers.length === 0 ? (
               <EmptyState
                 title="Aucune pièce de caisse enregistrée"
                 description="Les demandes de décaissement et validations pastorales apparaîtront ici."
@@ -648,7 +662,7 @@ function DeptAdminView({
                   <TableHeaderCell>Statut</TableHeaderCell>
                 </TableHead>
                 <TableBody>
-                  {vouchers.slice(0, 8).map((v) => (
+                  {safeVouchers.slice(0, 8).map((v) => (
                     <TableRow key={v.id}>
                       <TableCell>
                         <span className="font-mono text-xs font-bold">{v.voucher_number}</span>
@@ -725,16 +739,16 @@ function DeptAdminView({
 
   // 2. Mini-Dashboard Patrimonial (Section 9 : Admin Patrimoine)
   if (isPatrimoineDept) {
-    const grossTotal = assets.reduce((s, a) => s + Number(a.purchase_price ?? a.estimated_value ?? 0), 0);
-    const vncTotal = assets.reduce((s, a) => s + Number(a.net_book_value ?? a.estimated_value ?? 0), 0);
-    const lowStockAlerts = stocks.filter((st) => st.quantity_in_stock <= st.alert_threshold).length;
+    const grossTotal = safeAssets.reduce((s, a) => s + Number(a?.purchase_price ?? a?.estimated_value ?? 0), 0);
+    const vncTotal = safeAssets.reduce((s, a) => s + Number(a?.net_book_value ?? a?.estimated_value ?? 0), 0);
+    const lowStockAlerts = safeStocks.filter((st) => Number(st?.quantity_in_stock || 0) <= Number(st?.alert_threshold || 0)).length;
 
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card>
             <span className="text-[11px] text-gray-500 block">Nombre d'Actifs</span>
-            <span className="text-lg font-bold text-gray-900 dark:text-white block mt-0.5">{assets.length}</span>
+            <span className="text-lg font-bold text-gray-900 dark:text-white block mt-0.5">{safeAssets.length}</span>
           </Card>
           <Card>
             <span className="text-[11px] text-gray-500 block">Valeur Brute</span>
@@ -765,7 +779,7 @@ function DeptAdminView({
           >
             {isLoading ? (
               <TableSkeleton rows={4} columns={5} />
-            ) : assets.length === 0 ? (
+            ) : safeAssets.length === 0 ? (
               <EmptyState
                 title="Aucun actif enregistré"
                 description="Enregistrez vos équipements et immobilisations pour suivre leur amortissement et VNC."
@@ -780,7 +794,7 @@ function DeptAdminView({
                   <TableHeaderCell>VNC</TableHeaderCell>
                 </TableHead>
                 <TableBody>
-                  {assets.slice(0, 6).map((a) => (
+                  {safeAssets.slice(0, 6).map((a) => (
                     <TableRow key={a.id}>
                       <TableCell><span className="font-mono text-xs font-bold">{a.asset_code}</span></TableCell>
                       <TableCell><span className="text-xs font-semibold">{a.name}</span></TableCell>
@@ -839,13 +853,13 @@ function DeptAdminView({
     : [];
   const adminDeptIds = new Set(safeAdministeredDepts.map((d: any) => Number(d?.id)));
   const scopedMembers =
-    adminDeptIds.size > 0 && !departmentCodes.some((c) => ["ACCUEIL", "SECRETARIAT", "SOCIAL", "BRIGADE", "GDC"].includes(c))
-      ? members.filter((m) => m.department && adminDeptIds.has(Number(m.department)))
-      : members;
+    adminDeptIds.size > 0 && !safeDeptCodes.some((c) => ["ACCUEIL", "SECRETARIAT", "SOCIAL", "BRIGADE", "GDC"].includes(c))
+      ? safeMembers.filter((m) => m?.department && adminDeptIds.has(Number(m?.department)))
+      : safeMembers;
 
-  const isAccueilOrSocialOrSec = departmentCodes.some((c) => ["ACCUEIL", "SOCIAL", "SECRETARIAT"].includes(c));
-  const newComersCount = scopedMembers.filter((m) => m.status === "NOUVEAU").length;
-  const activeAlertsCount = alerts.filter((a) => a.status !== "RESOLVED").length;
+  const isAccueilOrSocialOrSec = safeDeptCodes.some((c) => ["ACCUEIL", "SOCIAL", "SECRETARIAT"].includes(c));
+  const newComersCount = scopedMembers.filter((m) => m?.status === "NOUVEAU").length;
+  const activeAlertsCount = safeAlerts.filter((a) => a?.status !== "RESOLVED").length;
 
   return (
     <div className="space-y-6">
@@ -1180,16 +1194,16 @@ export default function DashboardPage() {
         canFetchMembersAndAlerts ? membersService.getBrigades(currentCampusId) : Promise.resolve([]),
         departmentsService.getDepartments(currentCampusId),
       ]);
-      setMembers(membersData);
-      setVouchers(vouchersData);
-      setUsersList(usersData);
-      setCatalogList(catalogData);
-      setAssets(assetsData);
-      setStocks(stocksData);
-      setTransactions(transactionsData);
-      setAlerts(alertsData);
-      setBrigades(brigadesData);
-      setDepartments(departmentsData);
+      setMembers(Array.isArray(membersData) ? membersData : []);
+      setVouchers(Array.isArray(vouchersData) ? vouchersData : []);
+      setUsersList(Array.isArray(usersData) ? usersData : []);
+      setCatalogList(Array.isArray(catalogData) ? catalogData : []);
+      setAssets(Array.isArray(assetsData) ? assetsData : []);
+      setStocks(Array.isArray(stocksData) ? stocksData : []);
+      setTransactions(Array.isArray(transactionsData) ? transactionsData : []);
+      setAlerts(Array.isArray(alertsData) ? alertsData : []);
+      setBrigades(Array.isArray(brigadesData) ? brigadesData : []);
+      setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
     } catch (error) {
       console.error("Failed to load dashboard data", error);
     } finally {
@@ -1304,14 +1318,18 @@ export default function DashboardPage() {
   };
 
   // ── KPI cards (adaptés au rôle) ────────────────────────────────────────────
-  const totalMembers = members.length;
-  const newMembers = members.filter((m) => m.status === "NOUVEAU").length;
-  const totalDisbursed = vouchers
-    .filter((v) => v.status === "DISBURSED")
-    .reduce((acc, v) => acc + Number(v.amount || 0), 0);
-  const pendingVouchers = vouchers.filter((v) => v.status === "PENDING").length;
-  const activeAlertsCount = alerts.filter((a) => a.status !== "RESOLVED").length;
-  const openAlertsCount = alerts.filter((a) => a.status === "OPEN").length;
+  const safeMembers = Array.isArray(members) ? members : [];
+  const safeVouchers = Array.isArray(vouchers) ? vouchers : [];
+  const safeAlerts = Array.isArray(alerts) ? alerts : [];
+
+  const totalMembers = safeMembers.length;
+  const newMembers = safeMembers.filter((m) => m?.status === "NOUVEAU").length;
+  const totalDisbursed = safeVouchers
+    .filter((v) => v?.status === "DISBURSED")
+    .reduce((acc, v) => acc + Number(v?.amount || 0), 0);
+  const pendingVouchers = safeVouchers.filter((v) => v?.status === "PENDING").length;
+  const activeAlertsCount = safeAlerts.filter((a) => a?.status !== "RESOLVED").length;
+  const openAlertsCount = safeAlerts.filter((a) => a?.status === "OPEN").length;
 
   // ── Role badge label ────────────────────────────────────────────────────────
   const roleBadge = isSuperSuperAdmin
@@ -1466,7 +1484,7 @@ export default function DashboardPage() {
                   ? "Membres du Département"
                   : "Membres du Campus"
               }
-              value={isLoading ? "…" : totalMembers.toString()}
+              value={isLoading ? "…" : String(totalMembers ?? 0)}
               change="+8.4%"
               trend="up"
               subtitle="Enregistrés et suivis"
@@ -1476,7 +1494,7 @@ export default function DashboardPage() {
 
             <StatCard
               title="Nouveaux Venus"
-              value={isLoading ? "…" : newMembers.toString()}
+              value={isLoading ? "…" : String(newMembers ?? 0)}
               change="Personnes à intégrer"
               trend="up"
               subtitle="Module d'accueil en cours"
@@ -1492,7 +1510,7 @@ export default function DashboardPage() {
             value={
               isLoading
                 ? "…"
-                : totalDisbursed.toLocaleString("fr-FR") + " F"
+                : `${Number(totalDisbursed || 0).toLocaleString("fr-FR")} F`
             }
             change="Pièces justifiées"
             trend="up"
@@ -1505,7 +1523,7 @@ export default function DashboardPage() {
         {isAdminDept && (
           <StatCard
             title="Pièces en Attente"
-            value={isLoading ? "…" : pendingVouchers.toString()}
+            value={isLoading ? "…" : String(pendingVouchers ?? 0)}
             change="À valider"
             trend={pendingVouchers > 0 ? "up" : "neutral"}
             subtitle="Nécessite validation"
@@ -1516,7 +1534,7 @@ export default function DashboardPage() {
 
         <StatCard
           title="Alertes Pastorales"
-          value={isLoading ? "…" : activeAlertsCount.toString()}
+          value={isLoading ? "…" : String(activeAlertsCount ?? 0)}
           change={`${openAlertsCount} ouverte(s)`}
           trend={activeAlertsCount > 0 ? "up" : "down"}
           subtitle={activeAlertsCount > 0 ? "À traiter par l'équipe pastorale" : "Aucune alerte active"}
