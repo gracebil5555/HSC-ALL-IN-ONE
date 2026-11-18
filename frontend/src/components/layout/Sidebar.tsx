@@ -374,9 +374,21 @@ export const Sidebar: React.FC = () => {
       {/* Role Badge Footer */}
       {showExpanded && (
         <div className="p-4 border-t border-gray-100 dark:border-gray-800">
-          <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400 flex items-center justify-center shrink-0 font-bold text-xs">
-              {currentUser?.first_name?.[0] || "H"}
+          <Link
+            href="/profile"
+            className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 flex items-center gap-3 hover:border-brand-300 dark:hover:border-brand-500/40 transition-colors"
+            title="Modifier mon profil et ma photo"
+          >
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400 flex items-center justify-center shrink-0 font-bold text-xs">
+              {currentUser?.avatar ? (
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.username}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                currentUser?.first_name?.[0] || "H"
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">
@@ -386,7 +398,7 @@ export const Sidebar: React.FC = () => {
                 {isSSA ? "Supervision Mondiale" : currentUser?.campus_name || "Campus Local"}
               </p>
             </div>
-          </div>
+          </Link>
         </div>
       )}
     </aside>

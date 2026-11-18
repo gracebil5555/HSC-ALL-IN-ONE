@@ -48,7 +48,7 @@ class User(AbstractUser):
         blank=True,
         related_name='users'
     )
-    avatar = models.URLField(blank=True, null=True)
+    avatar = models.TextField(blank=True, null=True)
 
     # Système d'Adjoint / Délégation
     is_deputy = models.BooleanField(

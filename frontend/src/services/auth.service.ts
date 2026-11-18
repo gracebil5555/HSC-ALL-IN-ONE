@@ -47,6 +47,20 @@ export const authService = {
     }
   },
 
+  async updateProfile(payload: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    phone?: string;
+    title?: string;
+    avatar?: string | null;
+    current_password?: string;
+    new_password?: string;
+  }): Promise<CurrentUser> {
+    const response = await apiClient.patch<CurrentUser>("/users/me/", payload);
+    return response.data;
+  },
+
   logout() {
     if (typeof window !== "undefined") {
       localStorage.removeItem("accessToken");

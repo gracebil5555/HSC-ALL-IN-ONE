@@ -136,10 +136,77 @@ class UserViewSet(RoleFilterMixin, viewsets.ModelViewSet):
     # Actions personnalisées
     # ------------------------------------------------------------------
 
-    @action(detail=False, methods=["get"], url_path="me")
+    @action(detail=False, methods=["get", "patch"], url_path="me")
     def me(self, request):
-        """Retourne le profil complet de l'utilisateur connecté."""
-        serializer = self.get_serializer(request.user)
+        """
+        Retourne ou met à jour le profil personnel de l'utilisateur connecté
+        (prénom, nom, email, téléphone, titre, photo de profil, mot de passe).
+        """
+        user = request.user
+        if request.method == "GET":
+            serializer = self.get_serializer(user)
+            return Response(serializer.data)
+
+        allowed_fields = ("first_name", "last_name", "email", "phone", "title", "avatar")
+        updated_fields = []
+        for field in allowed_fields:
+            if field in request.data:
+                val = request.data.get(field)
+                if field == "avatar":
+                    if val is None or val == "":
+                        val = None
+                    elif isinstance(val, str):
+                        val = val.strip()
+                        if not (
+                            val.startswith("https://")
+                            or val.startswith("http://")
+                            or val.startswith("data:image/")
+                        ):
+                            return Response(
+                                {"avatar": "L'avatar doit être une URL http(s) ou une image valide."},
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+                        if len(val) > 500_000:
+                            return Response(
+                                {"avatar": "L'image est trop volumineuse (max 500 Ko)."},
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+                setattr(user, field, val if val is not None or field == "avatar" else "")
+                updated_fields.append(field)
+
+        new_password = request.data.get("new_password")
+        if new_password:
+            current_password = request.data.get("current_password") or ""
+            if not user.check_password(current_password):
+                return Response(
+                    {"current_password": "Mot de passe actuel incorrect."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            from django.contrib.auth.password_validation import validate_password
+            from django.core.exceptions import ValidationError as DjangoValidationError
+            try:
+                validate_password(new_password, user)
+            except DjangoValidationError as exc:
+                return Response(
+                    {"new_password": list(exc.messages)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.set_password(new_password)
+            updated_fields.append("password")
+
+        if updated_fields:
+            user.save(update_fields=updated_fields)
+            log_audit_event(
+                actor=user,
+                action="USER_PROFILE_UPDATED",
+                target_model="User",
+                target_id=user.id,
+                campus=user.campus,
+                description=f"Mise à jour du profil personnel ({', '.join(updated_fields)})",
+                request=request,
+            )
+
+        serializer = self.get_serializer(user)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"], url_path="contacts")

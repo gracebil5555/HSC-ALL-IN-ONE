@@ -235,6 +235,20 @@ export const Header: React.FC = () => {
 
               {/* Administrative Actions */}
               <div className="px-1 py-1 space-y-1">
+                <Link
+                  href="/profile"
+                  onClick={() => setIsUserOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-500/15 dark:hover:text-brand-400 transition-colors"
+                >
+                  <User className="w-4 h-4 text-brand-500" />
+                  <div className="flex flex-col text-left">
+                    <span>Mon Profil & Photo</span>
+                    <span className="text-[10px] text-gray-400 font-normal">
+                      Modifier mes informations & avatar
+                    </span>
+                  </div>
+                </Link>
+
                 {isSuperAdmin && (
                   <Link
                     href="/users"
