@@ -47,8 +47,8 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware', # Placed FIRST to ensure CORS headers on all requests (including preflight and error responses)
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware', # Added CORS middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

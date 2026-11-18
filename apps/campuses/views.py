@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from apps.users.permissions import IsSuperSuperAdmin, IsSuperAdminOfCampus, _effective_role
 from .models import Campus
 from .serializers import CampusSerializer
@@ -7,7 +7,7 @@ from .serializers import CampusSerializer
 class CampusViewSet(viewsets.ModelViewSet):
     """
     Gestion des Églises et Extensions HSC (Sections 5, 6, 10, 14, 15).
-    - Lecture réservée aux utilisateurs authentifiés.
+    - Lecture ouverte (AllowAny) pour alimenter le sélecteur d'églises et l'accueil.
     - Création / suppression d'une nouvelle extension : strictement réservée au Super Super Admin.
     - Modification : Super Super Admin ou Super Admin du campus concerné (hors parent/campus_type/lead_pastor).
     """
@@ -19,7 +19,7 @@ class CampusViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated(), IsSuperSuperAdmin()]
         if self.action in ("update", "partial_update"):
             return [IsAuthenticated(), IsSuperAdminOfCampus()]
-        return [IsAuthenticated()]
+        return [AllowAny()]
 
     def perform_create(self, serializer):
         campus = serializer.save()

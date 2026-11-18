@@ -14,13 +14,20 @@ else:
 if '.onrender.com' not in ALLOWED_HOSTS and '*' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('.onrender.com')
 
-# Enable WhiteNoise for serving static files in production
-MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+# Enable WhiteNoise for serving static files in production (after SecurityMiddleware, keeping CorsMiddleware at 0)
+MIDDLEWARE.insert(2, 'whitenoise.middleware.WhiteNoiseMiddleware')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # CORS configuration for production (Allows Vercel, Render & Localhost)
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    'https://hsc-all-in-one-git-main-moundou-rogers-projects.vercel.app',
+    'https://hsc-backend-060z.onrender.com',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.vercel\.app$",
