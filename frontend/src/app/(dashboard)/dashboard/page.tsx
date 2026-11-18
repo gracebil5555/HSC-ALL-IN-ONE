@@ -79,17 +79,23 @@ function GlobalNetworkView({
   onOpenCreateUser?: () => void;
   onSelectCampus?: (campusId: string) => void;
 }) {
-  const activeCampuses = campuses.filter((c) => c.is_active !== false).length;
-  const inactiveCampuses = campuses.length - activeCampuses;
-  const consolidatedVnc = assets.reduce(
+  const safeCampuses = Array.isArray(campuses) ? campuses : [];
+  const safeMembers = Array.isArray(members) ? members : [];
+  const safeVouchers = Array.isArray(vouchers) ? vouchers : [];
+  const safeAssets = Array.isArray(assets) ? assets : [];
+  const safeAlerts = Array.isArray(alerts) ? alerts : [];
+
+  const activeCampuses = safeCampuses.filter((c) => c.is_active !== false).length;
+  const inactiveCampuses = safeCampuses.length - activeCampuses;
+  const consolidatedVnc = safeAssets.reduce(
     (sum, a) => sum + Number((a as any).amount_in_hq_currency ?? a.net_book_value ?? a.estimated_value ?? 0),
     0
   );
-  const voucherHqTotal = vouchers.reduce(
+  const voucherHqTotal = safeVouchers.reduce(
     (sum, v) => sum + Number((v as any).amount_in_hq_currency ?? v.amount ?? 0),
     0
   );
-  const localCurrencyTotals = vouchers.reduce<Record<string, number>>((acc, v) => {
+  const localCurrencyTotals = safeVouchers.reduce<Record<string, number>>((acc, v) => {
     const cur = ((v as any).currency || (v as any).campus_currency || "XAF").toUpperCase();
     acc[cur] = (acc[cur] || 0) + Number(v.amount ?? 0);
     return acc;
@@ -97,9 +103,9 @@ function GlobalNetworkView({
   const localCurrencySummary = Object.entries(localCurrencyTotals)
     .map(([cur, total]) => formatCurrency(total, cur))
     .join(" • ");
-  const activeAlertsCount = alerts.filter((a) => a.status !== "RESOLVED").length;
+  const activeAlertsCount = safeAlerts.filter((a) => a.status !== "RESOLVED").length;
 
-  const countryBreakdown = campuses.reduce<Record<string, number>>((acc, c) => {
+  const countryBreakdown = safeCampuses.reduce<Record<string, number>>((acc, c) => {
     const key = `${c.country || "N/A"} (${c.city || "N/A"})`;
     acc[key] = (acc[key] || 0) + 1;
     return acc;
@@ -113,7 +119,7 @@ function GlobalNetworkView({
           <Card>
             <span className="text-[11px] text-gray-500 block">Églises du Réseau</span>
             <span className="text-lg font-bold text-gray-900 dark:text-white block mt-0.5">
-              {campuses.length} <span className="text-xs font-normal text-success-600">({activeCampuses} actives / {inactiveCampuses} inactives)</span>
+              {safeCampuses.length} <span className="text-xs font-normal text-success-600">({activeCampuses} actives / {inactiveCampuses} inactives)</span>
             </span>
           </Card>
           <Card>
@@ -158,7 +164,7 @@ function GlobalNetworkView({
         >
           {isLoading ? (
             <TableSkeleton rows={4} columns={4} />
-          ) : campuses.length === 0 ? (
+          ) : safeCampuses.length === 0 ? (
             <EmptyState
               title="Aucun campus configuré"
               description="Créez votre Église mère ou une extension pour démarrer la consolidation multi-sites."
@@ -172,7 +178,7 @@ function GlobalNetworkView({
               <TableHeaderCell>Statut</TableHeaderCell>
             </TableHead>
             <TableBody>
-              {campuses.map((c) => (
+              {safeCampuses.map((c) => (
                 <TableRow
                   key={c.id}
                   onClick={() => onSelectCampus && onSelectCampus(String(c.id))}
@@ -828,7 +834,10 @@ function DeptAdminView({
   }
 
   // 3. Mini-Dashboard Chorale / Accueil / Social / Secrétariat / Structure (Section 9)
-  const adminDeptIds = new Set((currentUser?.administered_departments || []).map((d: any) => Number(d.id)));
+  const safeAdministeredDepts = Array.isArray(currentUser?.administered_departments)
+    ? currentUser.administered_departments
+    : [];
+  const adminDeptIds = new Set(safeAdministeredDepts.map((d: any) => Number(d?.id)));
   const scopedMembers =
     adminDeptIds.size > 0 && !departmentCodes.some((c) => ["ACCUEIL", "SECRETARIAT", "SOCIAL", "BRIGADE", "GDC"].includes(c))
       ? members.filter((m) => m.department && adminDeptIds.has(Number(m.department)))
@@ -1016,7 +1025,7 @@ function AdjointView({ currentUser }: { currentUser: any }) {
           </div>
         </div>
         <div className="space-y-1.5">
-          {currentUser?.delegated_permissions?.length > 0 ? (
+          {Array.isArray(currentUser?.delegated_permissions) && currentUser.delegated_permissions.length > 0 ? (
             currentUser.delegated_permissions.map((p: string) => (
               <div
                 key={p}
@@ -1643,7 +1652,7 @@ export default function DashboardPage() {
                 onChange={(e) => setExtensionForm({ ...extensionForm, parent: Number(e.target.value) })}
                 className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
               >
-                {campuses.map((c) => (
+                {(Array.isArray(campuses) ? campuses : []).map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.city})
                   </option>
@@ -1669,7 +1678,7 @@ export default function DashboardPage() {
               className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
             >
               <option value="">-- Nommer plus tard ou choisir un responsable existant --</option>
-              {usersList.map((u) => (
+              {(Array.isArray(usersList) ? usersList : []).map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.title ? `${u.title} ` : ""}{u.first_name} {u.last_name} ({u.username})
                 </option>
@@ -1705,7 +1714,7 @@ export default function DashboardPage() {
               value={deptForm.catalog_item}
               onChange={(e) => {
                 const catId = e.target.value;
-                const found = catalogList.find((c) => String(c.id) === catId);
+                const found = (Array.isArray(catalogList) ? catalogList : []).find((c) => String(c.id) === catId);
                 if (found) {
                   setDeptForm({
                     ...deptForm,
@@ -1721,7 +1730,7 @@ export default function DashboardPage() {
               className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
             >
               <option value="">-- Création libre ou personnalisée --</option>
-              {catalogList.map((cat) => (
+              {(Array.isArray(catalogList) ? catalogList : []).map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name} ({cat.code})
                 </option>
@@ -1757,7 +1766,7 @@ export default function DashboardPage() {
                 className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
               >
                 <option value="">-- Aucun pour l'instant --</option>
-                {usersList.map((u) => (
+                {(Array.isArray(usersList) ? usersList : []).map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.first_name} {u.last_name} ({u.ecclesial_function_display || u.ecclesial_function})
                   </option>
@@ -1773,7 +1782,7 @@ export default function DashboardPage() {
                 className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
               >
                 <option value="">-- Aucun adjoint --</option>
-                {usersList.map((u) => (
+                {(Array.isArray(usersList) ? usersList : []).map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.first_name} {u.last_name}
                   </option>

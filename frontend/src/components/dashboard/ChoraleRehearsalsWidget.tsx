@@ -243,7 +243,7 @@ export const ChoraleRehearsalsWidget: React.FC<ChoraleRehearsalsWidgetProps> = (
           </div>
         ) : (
           <div className="space-y-2.5">
-            {rehearsals.map((reh) => {
+            {(Array.isArray(rehearsals) ? rehearsals : []).map((reh) => {
               const isExpanded = expandedId === reh.id;
               const presentCount = reh.presentMemberIds.length;
               return (
@@ -316,7 +316,7 @@ export const ChoraleRehearsalsWidget: React.FC<ChoraleRehearsalsWidgetProps> = (
                         </p>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
-                          {members.map((m) => {
+                          {(Array.isArray(members) ? members : []).map((m) => {
                             const mid = String(m.id);
                             const isPresent = reh.presentMemberIds.includes(mid);
                             return (

@@ -214,7 +214,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {activeProfile.features.map((feat, idx) => (
+              {(Array.isArray(activeProfile?.features) ? activeProfile.features : []).map((feat, idx) => (
                 <div key={idx} className="flex items-center gap-1.5 text-[11px] text-gray-700 dark:text-gray-300">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                   <span className="truncate">{feat}</span>
@@ -295,7 +295,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
             onChange={(e) => setCreateForm({ ...createForm, campus: Number(e.target.value) })}
             className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 cursor-pointer"
           >
-            {campuses.map((c) => (
+            {(Array.isArray(campuses) ? campuses : []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name} ({c.city}, {c.country})
               </option>
@@ -323,7 +323,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
               className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
             >
               <option value="">-- Choisir parmi les départements actifs de l'Église --</option>
-              {departments.map((d) => (
+              {(Array.isArray(departments) ? departments : []).map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name} ({d.code})
                 </option>

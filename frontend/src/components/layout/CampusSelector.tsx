@@ -91,7 +91,7 @@ export const CampusSelector: React.FC = () => {
 
           {/* List of Individual Campuses */}
           <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-1">
-            {campuses.map((campus) => {
+            {(Array.isArray(campuses) ? campuses : []).map((campus) => {
               const isSelected = String(currentCampusId) === String(campus.id);
               return (
                 <button

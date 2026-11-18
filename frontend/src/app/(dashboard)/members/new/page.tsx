@@ -206,7 +206,7 @@ export default function NewMemberPage() {
                 disabled={!isSuperSuperAdmin}
                 onChange={(e) => setCampusId(e.target.value)}
               >
-                {campuses.map((c) => (
+                {(Array.isArray(campuses) ? campuses : []).map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.city})
                   </option>
@@ -229,7 +229,7 @@ export default function NewMemberPage() {
                 value={ecclesialFunction}
                 onChange={(e) => setEcclesialFunction(e.target.value)}
               >
-                {ecclesialFunctions.map((opt) => (
+                {(Array.isArray(ecclesialFunctions) ? ecclesialFunctions : []).map((opt) => (
                   <option key={opt.code} value={opt.code}>
                     {opt.label}
                   </option>
@@ -246,7 +246,7 @@ export default function NewMemberPage() {
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
               >
-                {memberStatuses.map((st) => (
+                {(Array.isArray(memberStatuses) ? memberStatuses : []).map((st) => (
                   <option key={st.code} value={st.code}>
                     {st.label}
                   </option>
@@ -289,7 +289,7 @@ export default function NewMemberPage() {
                 onChange={(e) => setBrigadeId(e.target.value)}
               >
                 <option value="">Non affecté (Optionnelle)</option>
-                {brigadesList.map((b) => (
+                {(Array.isArray(brigadesList) ? brigadesList : []).map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name}
                   </option>
@@ -305,7 +305,7 @@ export default function NewMemberPage() {
                 onChange={(e) => setDepartmentId(e.target.value)}
               >
                 <option value="">Aucun département pour l'instant</option>
-                {departmentsList.map((d) => (
+                {(Array.isArray(departmentsList) ? departmentsList : []).map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
                   </option>

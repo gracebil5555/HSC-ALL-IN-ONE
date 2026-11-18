@@ -127,7 +127,8 @@ export default function UsersManagementPage() {
   }, []);
 
   // Filtrage local
-  const filteredUsers = users.filter((u) => {
+  const safeUsers = Array.isArray(users) ? users : [];
+  const filteredUsers = safeUsers.filter((u) => {
     const q = search.toLowerCase().trim();
     const matchesSearch =
       !q ||
@@ -288,7 +289,7 @@ export default function UsersManagementPage() {
         <Card className="p-4 flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Comptes</p>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{users.length}</h3>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{safeUsers.length}</h3>
             <p className="text-[11px] text-gray-400 mt-0.5">Utilisateurs enregistrés</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 flex items-center justify-center">
@@ -300,7 +301,7 @@ export default function UsersManagementPage() {
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Super Admins</p>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-              {users.filter((u) => u.role === "SUPER_ADMIN" || u.role === "SUPER_SUPER_ADMIN").length}
+              {safeUsers.filter((u) => u.role === "SUPER_ADMIN" || u.role === "SUPER_SUPER_ADMIN").length}
             </h3>
             <p className="text-[11px] text-gray-400 mt-0.5">Directions d'Églises</p>
           </div>
@@ -313,7 +314,7 @@ export default function UsersManagementPage() {
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Adjoints Titularisés</p>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-              {users.filter((u) => u.is_deputy || u.role === "ADJOINT").length}
+              {safeUsers.filter((u) => u.is_deputy || u.role === "ADJOINT").length}
             </h3>
             <p className="text-[11px] text-success-600 font-medium mt-0.5">Délégations actives</p>
           </div>
@@ -326,7 +327,7 @@ export default function UsersManagementPage() {
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Admins Départements</p>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-              {users.filter((u) => u.role === "ADMIN_DEPT").length}
+              {safeUsers.filter((u) => u.role === "ADMIN_DEPT").length}
             </h3>
             <p className="text-[11px] text-gray-400 mt-0.5">Responsables de structures</p>
           </div>
@@ -468,7 +469,7 @@ export default function UsersManagementPage() {
                           <UserCheck className="w-3.5 h-3.5" />
                           <span>Adjoint de : {u.deputy_of_name || "Titulaire"}</span>
                         </div>
-                        {u.delegated_permissions && u.delegated_permissions.length > 0 ? (
+                        {Array.isArray(u.delegated_permissions) && u.delegated_permissions.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {u.delegated_permissions.map((p) => (
                               <span
@@ -574,7 +575,7 @@ export default function UsersManagementPage() {
               className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
             >
               <option value="">-- Choisir un membre ou serviteur --</option>
-              {users
+              {safeUsers
                 .filter(
                   (u) =>
                     u.id !== selectedTitulaire?.id &&

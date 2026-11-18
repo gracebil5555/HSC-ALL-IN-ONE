@@ -276,7 +276,7 @@ export default function DepartmentsPage() {
           }
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {catalog.map((cat) => {
+            {(Array.isArray(catalog) ? catalog : []).map((cat) => {
               const targetCampus = Number(
                 currentCampusId !== "all"
                   ? currentCampusId
@@ -368,7 +368,7 @@ export default function DepartmentsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {visibleDepartments.map((dept) => (
+            {(Array.isArray(visibleDepartments) ? visibleDepartments : []).map((dept) => (
               <Card
                 key={dept.id}
                 className="flex flex-col justify-between border border-gray-200 dark:border-gray-800"
@@ -472,7 +472,7 @@ export default function DepartmentsPage() {
                 }
                 className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
               >
-                {campuses.map((c) => (
+                {(Array.isArray(campuses) ? campuses : []).map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.city})
                   </option>
@@ -487,7 +487,7 @@ export default function DepartmentsPage() {
               value={deptForm.catalog_item}
               onChange={(e) => {
                 const catId = e.target.value;
-                const found = catalog.find((c) => String(c.id) === catId);
+                const found = (Array.isArray(catalog) ? catalog : []).find((c) => String(c.id) === catId);
                 if (found) {
                   setDeptForm({
                     ...deptForm,
@@ -503,7 +503,7 @@ export default function DepartmentsPage() {
               className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
             >
               <option value="">-- Création libre personnalisée --</option>
-              {catalog.map((c) => (
+              {(Array.isArray(catalog) ? catalog : []).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.code})
                 </option>
@@ -552,7 +552,7 @@ export default function DepartmentsPage() {
                 className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
               >
                 <option value="">-- Aucun pour l'instant --</option>
-                {users.map((u) => (
+                {(Array.isArray(users) ? users : []).map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.first_name} {u.last_name} ({u.ecclesial_function_display || u.ecclesial_function})
                   </option>
@@ -570,7 +570,7 @@ export default function DepartmentsPage() {
                 className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
               >
                 <option value="">-- Aucun adjoint --</option>
-                {users.map((u) => (
+                {(Array.isArray(users) ? users : []).map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.first_name} {u.last_name}
                   </option>
@@ -612,7 +612,7 @@ export default function DepartmentsPage() {
                 className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
               >
                 <option value="">-- Non assigné --</option>
-                {users.map((u) => (
+                {(Array.isArray(users) ? users : []).map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.first_name} {u.last_name} ({u.ecclesial_function_display || u.ecclesial_function})
                   </option>
@@ -631,7 +631,7 @@ export default function DepartmentsPage() {
               className="w-full h-10 px-3 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
             >
               <option value="">-- Aucun adjoint --</option>
-              {users
+              {(Array.isArray(users) ? users : [])
                 .filter((u) => String(u.id) !== String(leaderForm.admin))
                 .map((u) => (
                   <option key={u.id} value={u.id}>

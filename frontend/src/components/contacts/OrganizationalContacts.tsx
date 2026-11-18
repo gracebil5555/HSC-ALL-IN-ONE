@@ -144,7 +144,7 @@ export const OrganizationalContacts: React.FC<OrganizationalContactsProps> = ({
             className="h-7 px-2 text-[11px] rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
           >
             <option value="ALL">Fonction : Toutes</option>
-            {ecclesialFunctions.map((f) => (
+            {(Array.isArray(ecclesialFunctions) ? ecclesialFunctions : []).map((f) => (
               <option key={f.code} value={f.code}>{f.label}</option>
             ))}
           </select>
@@ -155,7 +155,7 @@ export const OrganizationalContacts: React.FC<OrganizationalContactsProps> = ({
             className="h-7 px-2 text-[11px] rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
           >
             <option value="ALL">Dépt : Tous</option>
-            {departments.map((d) => (
+            {(Array.isArray(departments) ? departments : []).map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>
             ))}
           </select>
@@ -166,7 +166,7 @@ export const OrganizationalContacts: React.FC<OrganizationalContactsProps> = ({
             className="h-7 px-2 text-[11px] rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
           >
             <option value="ALL">Statut : Tous</option>
-            {memberStatuses.map((s) => (
+            {(Array.isArray(memberStatuses) ? memberStatuses : []).map((s) => (
               <option key={s.code} value={s.code}>{s.label}</option>
             ))}
           </select>
@@ -203,7 +203,7 @@ export const OrganizationalContacts: React.FC<OrganizationalContactsProps> = ({
         ) : filteredContacts.length === 0 ? (
           <div className="py-8 text-center text-xs text-gray-400">Aucun contact trouvé</div>
         ) : (
-          filteredContacts.map((contact) => {
+          (Array.isArray(filteredContacts) ? filteredContacts : []).map((contact) => {
             const cleanPhone = (contact.phone || "").replace(/[^0-9]/g, "");
             return (
               <div

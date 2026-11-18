@@ -14,7 +14,9 @@ export const RoleScopeBanner: React.FC = () => {
     isAdjoint,
     departmentCodes,
   } = useRole();
-  const delegatedPermissions: string[] = currentUser?.delegated_permissions ?? [];
+  const delegatedPermissions: string[] = Array.isArray(currentUser?.delegated_permissions)
+    ? currentUser.delegated_permissions
+    : [];
 
   if (!currentUser) return null;
 

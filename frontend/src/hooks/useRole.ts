@@ -21,7 +21,9 @@ export function useRole() {
       ? currentUser.deputy_of_role
       : role);
 
-  const delegated: string[] = currentUser?.delegated_permissions ?? [];
+  const delegated: string[] = Array.isArray(currentUser?.delegated_permissions)
+    ? currentUser.delegated_permissions
+    : [];
 
   // ── Niveaux directs et effectifs (incluant l'héritage de périmètre pour l'Adjoint) ──
   const isSuperSuperAdmin = effectiveRole === "SUPER_SUPER_ADMIN";
@@ -46,14 +48,18 @@ export function useRole() {
   };
 
   // ── Résolution des Départements gérés par l'Admin Dept / Adjoint (Sections 8 & 9) ──
-  const rawCodes = currentUser?.department_codes ?? [];
-  const deptCodesFromList = (currentUser?.administered_departments ?? [])
-    .map((d) => (d.code || "").toUpperCase())
+  const rawCodes = Array.isArray(currentUser?.department_codes)
+    ? currentUser.department_codes
+    : [];
+  const deptCodesFromList = (Array.isArray(currentUser?.administered_departments)
+    ? currentUser.administered_departments
+    : [])
+    .map((d) => (d?.code || "").toUpperCase())
     .filter(Boolean);
   const titleLower = (currentUser?.title || "").toLowerCase();
 
   const resolvedDeptCodes = new Set<string>([
-    ...rawCodes.map((c) => c.toUpperCase()),
+    ...rawCodes.map((c) => (c || "").toUpperCase()),
     ...deptCodesFromList,
   ]);
   if (resolvedDeptCodes.size === 0 && isAdminDept) {
